@@ -1,0 +1,30 @@
+{
+  "$comment": "Contact details for the whole site. Edit this file and save — nothing else needs changing. Every 'en'/'ar' pair is the English and Arabic version of the same text.",
+
+  "email": "hello@echomedia.production",
+
+  "phones": [
+    {
+      "number": "+20 123 456 7890",
+      "label": { "en": "General", "ar": "عام" },
+      "whatsapp": true
+    },
+    {
+      "number": "+20 123 456 7891",
+      "label": { "en": "Bookings", "ar": "الحجوزات" },
+      "whatsapp": true
+    }
+  ],
+
+  "social": [
+    { "name": "Instagram", "url": "https://instagram.com/" },
+    { "name": "YouTube", "url": "https://youtube.com/" },
+    { "name": "LinkedIn", "url": "https://linkedin.com/" }
+  ],
+
+  "$comment_location": "OPTIONAL. Left empty on purpose so the site does not tie itself to one physical location. Fill any of these in and the footer address block and the structured data will appear automatically; leave them empty and nothing is shown.",
+
+  "location": { "en": "", "ar": "" },
+  "address": { "en": "", "ar": "" },
+  "mapUrl": ""
+}

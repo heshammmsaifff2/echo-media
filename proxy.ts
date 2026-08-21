@@ -8,13 +8,13 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
-     * Feel free to modify this pattern to include more paths.
+     * Run the session proxy on page requests only.
+     *
+     * Every static asset extension the site serves must be listed here. Media
+     * left off this list gets treated as a page, fails the auth check, and is
+     * redirected to /auth/login — which silently breaks the asset for every
+     * signed-out visitor.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|mov|m4v|mp3|m4a|wav|woff|woff2|ttf|otf|txt|xml|json)$).*)",
   ],
 };

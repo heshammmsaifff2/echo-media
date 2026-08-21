@@ -1,20 +1,28 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasEnvVars } from "../utils";
+import { isLocale, localePath, DEFAULT_LOCALE, type Locale } from "../locale";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });
 
-  // If the env vars are not set, skip proxy check. You can remove this
-  // once you setup the project.
   if (!hasEnvVars) {
     return supabaseResponse;
   }
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+  const cookieHeader = request.headers.get("cookie") || "";
+  if (cookieHeader.length > 16384) {
+    const response = NextResponse.next({ request });
+    request.cookies.getAll().forEach(({ name }) => {
+      if (name.startsWith("sb-")) {
+        response.cookies.delete(name);
+      }
+    });
+    return response;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -38,39 +46,50 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: If you remove getClaims() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  const pathname = request.nextUrl.pathname;
+  const firstSegment = pathname.split("/")[1] ?? "";
+
+  // The portal keeps its own unlocalized URLs.
+  const isPortal = PORTAL_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+
+  if (!isPortal) {
+    // Everything else belongs to the localized site tree. A path arriving
+    // without a locale (/, /portfolio, an old bookmark) is permanently sent to
+    // the right language so there is exactly one indexable URL per page.
+    if (!isLocale(firstSegment)) {
+      const url = request.nextUrl.clone();
+      url.pathname = localePath(preferredLocale(request), pathname);
+      return NextResponse.redirect(url, 308);
+    }
+    return supabaseResponse;
+  }
+
+  const isPublicPortal =
+    pathname.startsWith("/auth") || pathname.startsWith("/login");
+
+  if (!user && !isPublicPortal) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
     return NextResponse.redirect(url);
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
-
   return supabaseResponse;
+}
+
+const PORTAL_PREFIXES = ["/auth", "/login", "/admin", "/dashboard", "/protected"];
+
+/** Honour the browser's Accept-Language, defaulting to English. */
+function preferredLocale(request: NextRequest): Locale {
+  const header = request.headers.get("accept-language") ?? "";
+  const wantsArabic = header
+    .split(",")
+    .map((part) => part.trim().split(";")[0].toLowerCase())
+    .some((tag) => tag === "ar" || tag.startsWith("ar-"));
+
+  return wantsArabic ? "ar" : DEFAULT_LOCALE;
 }

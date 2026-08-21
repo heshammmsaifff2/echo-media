@@ -2,67 +2,210 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
-}
+/*
+ * Echo Media Production — design tokens.
+ *
+ * Dark-only by design: this is a cinematic brand and the palette is built from
+ * five dark values plus a single accent. :root and .dark carry identical values
+ * so a stray theme class can never wash the site out.
+ *
+ *   #0a0a0a  base          #a6a6a6  muted text
+ *   #181818  surface       #f2f2f2  text
+ *   #303030  line          #ffffff  emphasis
+ *   #5b7cff  accent
+ */
 
 @layer base {
+  :root,
+  .dark {
+    --font-display: var(--font-inter), "Inter", system-ui, sans-serif;
+    --font-ar: var(--font-tajawal), "Tajawal", system-ui, sans-serif;
+
+    /* Raw brand values */
+    --echo-base: 0 0% 3.9%;
+    --echo-surface: 0 0% 9.4%;
+    --echo-line: 0 0% 18.8%;
+    --echo-muted: 0 0% 65.1%;
+    --echo-text: 0 0% 94.9%;
+    --echo-bright: 0 0% 100%;
+    --echo-accent: 228 100% 68%;
+
+    /* Semantic tokens (shadcn contract) */
+    --background: var(--echo-base);
+    --foreground: var(--echo-text);
+    --card: var(--echo-surface);
+    --card-foreground: var(--echo-text);
+    --popover: var(--echo-surface);
+    --popover-foreground: var(--echo-text);
+    --primary: var(--echo-accent);
+    --primary-foreground: var(--echo-base);
+    --secondary: var(--echo-surface);
+    --secondary-foreground: var(--echo-text);
+    --muted: var(--echo-surface);
+    --muted-foreground: var(--echo-muted);
+    --accent: var(--echo-accent);
+    --accent-foreground: var(--echo-base);
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: var(--echo-line);
+    --input: var(--echo-line);
+    --ring: var(--echo-accent);
+    --radius: 0.75rem;
+  }
+
   * {
     @apply border-border;
   }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-display);
+    /* Lenis drives scrolling; native smooth would fight it. */
+    scroll-behavior: auto;
+  }
+
+  [dir="rtl"] body,
+  [lang="ar"] body {
+    font-family: var(--font-ar);
+  }
+
+  ::selection {
+    background: hsl(var(--echo-accent));
+    color: hsl(var(--echo-base));
+  }
+
+  /* Keyboard focus stays visible; pointer clicks don't paint a ring. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--echo-accent));
+    outline-offset: 3px;
+  }
+}
+
+@layer components {
+  /*
+   * Display type. Huge, tightly tracked, optically balanced — the core of the
+   * look. Arabic needs looser tracking and more line-height than Latin, so the
+   * RTL overrides below are not optional.
+   */
+  .display {
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 0.92;
+    text-wrap: balance;
+  }
+
+  [dir="rtl"] .display {
+    letter-spacing: 0;
+    line-height: 1.18;
+    font-weight: 800;
+  }
+
+  .display-xl {
+    @apply display;
+    font-size: clamp(3rem, 12vw, 11rem);
+  }
+
+  .display-lg {
+    @apply display;
+    font-size: clamp(2.5rem, 8vw, 6.5rem);
+  }
+
+  .display-md {
+    @apply display;
+    font-size: clamp(2rem, 5vw, 4rem);
+    line-height: 1;
+  }
+
+  [dir="rtl"] .display-md {
+    line-height: 1.25;
+  }
+
+  /* Small uppercase label used to tag every section. */
+  .eyebrow {
+    @apply text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground;
+  }
+
+  [dir="rtl"] .eyebrow {
+    @apply tracking-[0.12em];
+    text-transform: none;
+  }
+
+  .rule {
+    @apply h-px w-full bg-border;
+  }
+}
+
+@layer utilities {
+  .text-bright {
+    color: hsl(var(--echo-bright));
+  }
+
+  .text-accent-brand {
+    color: hsl(var(--echo-accent));
+  }
+
+  .bg-surface {
+    background-color: hsl(var(--echo-surface));
+  }
+
+  /* Film grain — keeps flat dark panels from banding. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    z-index: 1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .edge-fade-b {
+    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+  }
+
+  .marquee-track {
+    animation: marquee 40s linear infinite;
+  }
+
+  [dir="rtl"] .marquee-track {
+    animation-direction: reverse;
+  }
+
+  .marquee-mask {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 12%,
+      #000 88%,
+      transparent
+    );
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .marquee-track {
+    animation: none;
   }
 }

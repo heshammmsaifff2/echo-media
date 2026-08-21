@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
@@ -24,7 +24,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const { isAr } = useI18n();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,15 +33,13 @@ export function LoginForm({
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw error;
-      // Update this route to redirect to an authenticated route. The user already has an active session.
-      router.push("/protected");
+      const { error: authError } =
+        await supabase.auth.signInWithPassword({ email, password });
+      if (authError) throw authError;
+
+      window.location.href = "/auth/callback";
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : isAr ? "حدث خطأ" : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -50,34 +48,44 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+        <CardHeader className="text-center">
+          <Link href="/" className="text-2xl font-bold tracking-tight mx-auto mb-2">
+            echo<span className="text-blue-500">.</span>
+          </Link>
+          <CardTitle className="text-xl">
+            {isAr ? "مرحباً بعودتك" : "Welcome back"}
+          </CardTitle>
           <CardDescription>
-            Enter your email below to login to your account
+            {isAr ? "سجل دخول إلى حسابك" : "Sign in to your account"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin}>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">
+                  {isAr ? "البريد الإلكتروني" : "Email"}
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="you@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  dir="ltr"
                 />
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">
+                    {isAr ? "كلمة المرور" : "Password"}
+                  </Label>
                   <Link
                     href="/auth/forgot-password"
-                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                    className="ml-auto inline-block text-xs underline-offset-4 hover:underline text-muted-foreground"
                   >
-                    Forgot your password?
+                    {isAr ? "نسيت كلمة المرور؟" : "Forgot password?"}
                   </Link>
                 </div>
                 <Input
@@ -86,20 +94,20 @@ export function LoginForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  dir="ltr"
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="w-full cursor-pointer" disabled={isLoading}>
+                {isLoading
+                  ? isAr ? "جاري تسجيل الدخول..." : "Signing in..."
+                  : isAr ? "تسجيل الدخول" : "Sign In"}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/auth/sign-up"
-                className="underline underline-offset-4"
-              >
-                Sign up
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              {isAr ? "ليس لديك حساب؟" : "Don't have an account?"}{" "}
+              <Link href="/auth/sign-up" className="underline underline-offset-4 text-foreground">
+                {isAr ? "إنشاء حساب" : "Sign up"}
               </Link>
             </div>
           </form>

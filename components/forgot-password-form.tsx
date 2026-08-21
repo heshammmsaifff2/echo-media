@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,6 +24,7 @@ export function ForgotPasswordForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { isAr } = useI18n();
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,14 +33,13 @@ export function ForgotPasswordForm({
     setError(null);
 
     try {
-      // The url which will be included in the email. This URL needs to be configured in your redirect URLs in the Supabase dashboard at https://supabase.com/dashboard/project/_/auth/url-configuration
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/update-password`,
       });
       if (error) throw error;
       setSuccess(true);
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : isAr ? "حدث خطأ" : "An error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -48,52 +49,68 @@ export function ForgotPasswordForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       {success ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Password reset instructions sent</CardDescription>
+          <CardHeader className="text-center">
+            <Link href="/" className="text-2xl font-bold tracking-tight mx-auto mb-2">
+              echo<span className="text-blue-500">.</span>
+            </Link>
+            <CardTitle className="text-xl">
+              {isAr ? "تحقق من بريدك الإلكتروني" : "Check Your Email"}
+            </CardTitle>
+            <CardDescription>
+              {isAr ? "تم إرسال تعليمات إعادة تعيين كلمة المرور" : "Password reset instructions sent"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              If you registered using your email and password, you will receive
-              a password reset email.
+            <p className="text-sm text-muted-foreground text-center">
+              {isAr
+                ? "إذا كان لديك حساب مسجل بهذا البريد، ستتلقى رسالة لإعادة تعيين كلمة المرور."
+                : "If you registered using your email and password, you will receive a password reset email."}
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
+          <CardHeader className="text-center">
+            <Link href="/" className="text-2xl font-bold tracking-tight mx-auto mb-2">
+              echo<span className="text-blue-500">.</span>
+            </Link>
+            <CardTitle className="text-xl">
+              {isAr ? "إعادة تعيين كلمة المرور" : "Reset Your Password"}
+            </CardTitle>
             <CardDescription>
-              Type in your email and we&apos;ll send you a link to reset your
-              password
+              {isAr
+                ? "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين"
+                : "Enter your email and we'll send you a reset link"}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword}>
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">
+                    {isAr ? "البريد الإلكتروني" : "Email"}
+                  </Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="m@example.com"
+                    placeholder="you@example.com"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    dir="ltr"
                   />
                 </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send reset email"}
+                {error && <p className="text-sm text-destructive">{error}</p>}
+                <Button type="submit" className="w-full cursor-pointer" disabled={isLoading}>
+                  {isLoading
+                    ? isAr ? "جاري الإرسال..." : "Sending..."
+                    : isAr ? "إرسال رابط الإعادة" : "Send reset link"}
                 </Button>
               </div>
-              <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="underline underline-offset-4"
-                >
-                  Login
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                {isAr ? "تذكرت كلمة المرور؟" : "Remember your password?"}{" "}
+                <Link href="/auth/login" className="underline underline-offset-4 text-foreground">
+                  {isAr ? "تسجيل الدخول" : "Sign in"}
                 </Link>
               </div>
             </form>

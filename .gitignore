@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Video masters — originals kept locally, compressed versions live in public/
+media-source/
