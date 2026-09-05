@@ -93,7 +93,7 @@ export function FilmSection() {
 
         <FadeIn>
           <LazyVideo
-            src="/final_2.mp4"
+            src="/final_2.MOV"
             poster="/posters/final2.jpg"
             mode="feature"
             label={isAr ? "فيلم Echo" : "Echo brand film"}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadToCloudinary } from "@/lib/upload";
 import { useI18n } from "@/lib/i18n";
@@ -8,12 +8,79 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 import {
   Lock, Unlock, Loader2, Check, Download,
   ExternalLink, FileText, CreditCard, Clock, Timer, AlertTriangle,
+  Eye, Trash2, FileVideo, FileArchive, FileImage,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+function getDeliveryFileMeta(url: string, isAr: boolean) {
+  try {
+    const isDrive = url.includes("drive.google.com") || url.includes("docs.google.com");
+    if (isDrive) {
+      return {
+        name: isAr ? "رابط Google Drive" : "Google Drive Link",
+        ext: "DRIVE",
+        label: isAr ? "رابط خارجي على Google Drive" : "External link on Google Drive",
+        isArchive: false,
+        isZip: false,
+        isVideo: false,
+        isImage: false,
+        isDrive: true,
+      };
+    }
+
+    const clean = url.split("?")[0];
+    const rawName = clean.substring(clean.lastIndexOf("/") + 1);
+    const decodedName = decodeURIComponent(rawName) || url;
+    const ext = rawName.split(".").pop()?.toLowerCase() || "";
+
+    const ARCHIVE_EXTENSIONS = [
+      "zip", "rar", "7z", "tar", "gz", "bz2", "xz", "tgz", "tbz2", "zipx", "iso", "cab", "arj", "lzh", "z", "lzma"
+    ];
+    const isArchive = ARCHIVE_EXTENSIONS.includes(ext) || url.includes("/raw/upload/");
+    const isVideo = ["mp4", "mov", "avi", "mkv", "webm", "m4v", "wmv"].includes(ext) || url.includes("/video/upload/");
+    const isImage = ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(ext) || url.includes("/image/upload/");
+
+    const extUpper = (ext || (isVideo ? "video" : isArchive ? "archive" : isImage ? "image" : "file")).toUpperCase();
+
+    let label = isAr ? "ملف تسليم" : "Deliverable File";
+    if (isVideo) {
+      label = isAr ? `ملف فيديو عالي الجودة (${extUpper})` : `High-Quality Video (${extUpper})`;
+    } else if (isArchive) {
+      label = isAr ? `أرشيف مضغوط (${extUpper})` : `${extUpper} Compressed Archive`;
+    } else if (isImage) {
+      label = isAr ? `ملف صورة (${extUpper})` : `Image File (${extUpper})`;
+    }
+
+    return {
+      name: decodedName,
+      ext: extUpper,
+      label,
+      isArchive,
+      isZip: isArchive,
+      isVideo,
+      isImage,
+      isDrive: false,
+    };
+  } catch {
+    return {
+      name: url,
+      ext: "FILE",
+      label: isAr ? "ملف تسليم" : "Deliverable File",
+      isArchive: false,
+      isZip: false,
+      isVideo: false,
+      isImage: false,
+      isDrive: false,
+    };
+  }
+}
 
 type Order = {
   id: string;
@@ -110,7 +177,10 @@ function formatCountdown(ms: number, isAr: boolean) {
 
 function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(order.receipt_url);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const remaining = useCountdown(order.delivery_unlocked_at);
 
@@ -119,16 +189,53 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
     try {
       const { url } = await uploadToCloudinary(file, "echo/receipts");
       const supabase = createClient();
-      await supabase.from("client_orders").update({
+      const { error } = await supabase.from("client_orders").update({
         receipt_url: url,
         payment_status: "receipt_uploaded",
       }).eq("id", order.id);
-      setUploaded(true);
+
+      if (error) {
+        console.error("Supabase receipt update error:", error);
+        throw new Error(error.message);
+      }
+
+      setReceiptUrl(url);
       router.refresh();
-    } catch {
-      alert(isAr ? "فشل رفع الإيصال" : "Failed to upload receipt");
+    } catch (err: unknown) {
+      console.error("Receipt upload error:", err);
+      const msg = err instanceof Error ? err.message : "";
+      alert(isAr ? `فشل رفع الإيصال: ${msg || "حاول مرة أخرى"}` : `Failed to upload receipt: ${msg || "Please try again"}`);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteReceipt = async () => {
+    if (!confirm(isAr ? "هل أنت متأكد من حذف هذا الإيصال لرفع إيصال بديل؟" : "Are you sure you want to remove this receipt to upload a replacement?")) return;
+    setDeleting(true);
+    try {
+      const supabase = createClient();
+      const fallbackStatus = Number(order.deposit_paid) > 0 ? "deposit_paid" : "pending";
+      const { error } = await supabase.from("client_orders").update({
+        receipt_url: null,
+        payment_status: fallbackStatus,
+      }).eq("id", order.id);
+
+      if (error) {
+        console.error("Failed to delete receipt:", error);
+        throw new Error(error.message);
+      }
+
+      setReceiptUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      router.refresh();
+    } catch (err: unknown) {
+      console.error("Delete receipt error:", err);
+      alert(isAr ? "فشل حذف الإيصال، يرجى المحاولة مرة أخرى" : "Failed to delete receipt, please try again");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -207,15 +314,68 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                 </div>
               </div>
 
-              {order.payment_status === "receipt_uploaded" || uploaded ? (
-                <div className="flex items-center gap-2 text-sm text-amber-500">
-                  <FileText size={16} />
-                  {isAr ? "تم رفع الإيصال — بانتظار تأكيد الإدارة" : "Receipt uploaded — awaiting admin verification"}
+              {receiptUrl ? (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 sm:p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 text-amber-500">
+                      <FileText size={20} className="shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {isAr ? "تم رفع إيصال الدفع" : "Payment receipt uploaded"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {isAr ? "بانتظار مراجعة وتأكيد الإدارة" : "Awaiting admin review & verification"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer">
+                            <Eye size={14} /> {isAr ? "معاينة الإيصال" : "View Receipt"}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                          <DialogHeader>
+                            <DialogTitle>{isAr ? "إيصال الدفع المرفق" : "Attached Payment Receipt"}</DialogTitle>
+                          </DialogHeader>
+                          {receiptUrl.toLowerCase().includes(".pdf") ? (
+                            <div className="py-8 text-center space-y-4">
+                              <FileText size={48} className="mx-auto text-muted-foreground" />
+                              <p className="text-sm font-medium">{isAr ? "مستند PDF" : "PDF Document"}</p>
+                              <Button asChild size="sm" className="gap-1.5">
+                                <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink size={14} /> {isAr ? "فتح الإيصال في نافذة جديدة" : "Open in New Tab"}
+                                </a>
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden bg-muted">
+                              <Image src={receiptUrl} alt="Receipt Preview" fill className="object-contain" sizes="500px" />
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={deleting}
+                        className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                        onClick={handleDeleteReceipt}
+                      >
+                        {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                        {isAr ? "حذف وتغيير الإيصال" : "Remove & Replace"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="grid gap-2">
                   <Label className="text-sm">{isAr ? "ارفع إيصال الدفع" : "Upload Payment Receipt"}</Label>
                   <Input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*,.pdf"
                     disabled={uploading}
@@ -284,32 +444,101 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                   </span>
                 </div>
               )}
-              <div className="grid gap-2">
-                {order.delivery_files.map((url, i) => (
-                  <a
-                    key={i}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-lg border border-border/50 bg-card p-3 hover:border-blue-500/30 transition-colors group"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                      {order.delivery_type === "google_drive_link" ? (
-                        <ExternalLink size={18} className="text-blue-500" />
-                      ) : (
-                        <Download size={18} className="text-blue-500" />
-                      )}
+              <div className="grid gap-2.5">
+                {order.delivery_files.map((url, i) => {
+                  const meta = getDeliveryFileMeta(url, isAr);
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3.5 hover:border-primary/40 hover:bg-muted/20 transition-all group shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            meta.isVideo
+                              ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
+                              : meta.isZip
+                              ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                              : meta.isDrive
+                              ? "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                              : meta.isImage
+                              ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                              : "bg-primary/10 text-primary border border-primary/20"
+                          }`}
+                        >
+                          {meta.isVideo ? (
+                            <FileVideo size={20} />
+                          ) : meta.isZip ? (
+                            <FileArchive size={20} />
+                          ) : meta.isDrive ? (
+                            <ExternalLink size={20} />
+                          ) : meta.isImage ? (
+                            <FileImage size={20} />
+                          ) : (
+                            <Download size={20} />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p
+                              className="text-sm font-semibold truncate group-hover:text-primary transition-colors text-foreground"
+                              title={meta.name}
+                            >
+                              {meta.name}
+                            </p>
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] font-mono uppercase px-1.5 py-0 h-4 ${
+                                meta.isVideo
+                                  ? "border-purple-500/30 text-purple-500"
+                                  : meta.isZip
+                                  ? "border-amber-500/30 text-amber-500"
+                                  : meta.isDrive
+                                  ? "border-blue-500/30 text-blue-500"
+                                  : "border-muted-foreground/30 text-muted-foreground"
+                              }`}
+                            >
+                              {meta.ext}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {meta.label}
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={!meta.isDrive}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm hover:shadow cursor-pointer"
+                      >
+                        {meta.isDrive ? (
+                          <>
+                            <ExternalLink size={13} />
+                            <span>{isAr ? "فتح الرابط" : "Open Link"}</span>
+                          </>
+                        ) : meta.isArchive ? (
+                          <>
+                            <Download size={13} />
+                            <span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span>
+                          </>
+                        ) : meta.isVideo ? (
+                          <>
+                            <Download size={13} />
+                            <span>{isAr ? `تحميل الفيديو (${meta.ext})` : `Download Video (${meta.ext})`}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Download size={13} />
+                            <span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span>
+                          </>
+                        )}
+                      </a>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate group-hover:text-blue-500 transition-colors">
-                        {order.delivery_type === "google_drive_link"
-                          ? (isAr ? "رابط Google Drive" : "Google Drive Link")
-                          : `${isAr ? "ملف" : "File"} ${i + 1}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">{url}</p>
-                    </div>
-                  </a>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (

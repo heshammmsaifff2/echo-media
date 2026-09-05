@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUploadSignature } from "@/lib/cloudinary";
-import { createClient } from "@/lib/supabase/server";
+import { getUser } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

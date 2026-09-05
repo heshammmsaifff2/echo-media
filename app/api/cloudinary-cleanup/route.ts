@@ -29,8 +29,8 @@ export async function GET() {
     const referencedIds = new Set<string>();
     const addUrl = (url: string | null | undefined) => {
       if (!url || !url.includes("cloudinary.com")) return;
-      const id = extractPublicId(url);
-      if (id) referencedIds.add(id);
+      const variants = extractPublicIdVariants(url);
+      variants.forEach((id) => referencedIds.add(id));
     };
 
     (portfolioRes.data || []).forEach((item) => {
@@ -49,19 +49,23 @@ export async function GET() {
       let nextCursor: string | undefined;
 
       do {
+        // Scan ALL resources in the Cloudinary account (including root & samples folders)
         const result: {
           resources: { public_id: string; secure_url: string; resource_type: string }[];
           next_cursor?: string;
         } = await cloudinary.api.resources({
           type: "upload",
           resource_type: resourceType,
-          prefix: "echo/",
           max_results: 500,
           next_cursor: nextCursor,
         });
 
         for (const resource of result.resources) {
-          if (!referencedIds.has(resource.public_id)) {
+          const resId = resource.public_id;
+          const resIdWithoutExt = resId.replace(/\.[^/.]+$/, "");
+
+          // If not referenced in database, it's safe to clean up
+          if (!referencedIds.has(resId) && !referencedIds.has(resIdWithoutExt)) {
             orphaned.push({
               public_id: resource.public_id,
               url: resource.secure_url,
@@ -103,10 +107,31 @@ export async function DELETE(req: Request) {
 
     let deleted = 0;
     for (const [resourceType, publicIds] of byType) {
-      const result = await cloudinary.api.delete_resources(publicIds, {
-        resource_type: resourceType,
-      });
-      deleted += Object.keys(result.deleted || {}).length;
+      // Cloudinary allows up to 100 public_ids per delete_resources API call.
+      for (let i = 0; i < publicIds.length; i += 100) {
+        const chunk = publicIds.slice(i, i + 100);
+        const result = await cloudinary.api.delete_resources(chunk, {
+          resource_type: resourceType,
+        });
+        deleted += Object.keys(result.deleted || {}).length;
+      }
+    }
+
+    // Clean up empty default sample folders
+    const sampleFolders = [
+      "samples/animals",
+      "samples/ecommerce",
+      "samples/food",
+      "samples/landscapes",
+      "samples/people",
+      "samples",
+    ];
+    for (const folder of sampleFolders) {
+      try {
+        await cloudinary.api.delete_folder(folder);
+      } catch {
+        // Safe to ignore if folder is not empty or doesn't exist
+      }
     }
 
     return NextResponse.json({ deleted });
@@ -116,7 +141,10 @@ export async function DELETE(req: Request) {
   }
 }
 
-function extractPublicId(url: string): string | null {
-  const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
-  return match ? match[1] : null;
+function extractPublicIdVariants(url: string): string[] {
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)$/);
+  if (!match) return [];
+  const full = match[1];
+  const withoutExt = full.replace(/\.[^/.]+$/, "");
+  return [full, withoutExt];
 }

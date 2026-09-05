@@ -7,9 +7,9 @@ import { hero } from "@/lib/brand";
 import { LineReveal, motion } from "@/components/motion";
 import { ArrowRight, ArrowDown } from "lucide-react";
 
-// WebGL never runs on the server, and keeping it out of the initial bundle
-// lets the headline paint first.
-const EchoField = dynamic(() => import("@/components/three/echo-field"), {
+// Lightweight 2D canvas resonance animation: zero Three.js bundle overhead,
+// 60-120fps smooth physics, no deprecation warnings, battery efficient.
+const EchoResonance = dynamic(() => import("@/components/hero/echo-resonance"), {
   ssr: false,
 });
 
@@ -19,12 +19,12 @@ export function HeroSection() {
 
   return (
     <section className="relative min-h-[100svh] w-full overflow-hidden grain">
-      {/* Wave field sits behind everything and bleeds off the bottom edge. */}
-      <EchoField className="absolute inset-x-0 bottom-0 top-[18%] z-0" />
+      {/* 3D Kinetic Echo Wavefield running on high-performance Canvas */}
+      <EchoResonance className="absolute inset-0 z-0" />
 
-      {/* Keeps the type legible over the brightest wave crests. */}
-      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(120%_80%_at_50%_0%,hsl(var(--echo-base))_25%,transparent_75%)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-40 bg-gradient-to-t from-background to-transparent" />
+      {/* Soft atmospheric gradient that keeps text crystal clear while letting Three.js waves shine */}
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,transparent_20%,hsl(var(--echo-base)/0.45)_90%)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-32 bg-gradient-to-t from-background to-transparent" />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1400px] flex-col justify-center px-6 pt-28 pb-20 sm:px-10">
         <motion.p

@@ -54,7 +54,7 @@ export function AdminStats({ stats }: { stats: Stats }) {
 
   const deleteOrphaned = async () => {
     if (!orphaned?.length) return;
-    if (!confirm(isAr ? `حذف ${orphaned.length} ملف(ات) غير مستخدمة؟` : `Delete ${orphaned.length} orphaned file(s)?`)) return;
+    if (!confirm(isAr ? `تأكيد حذف ${orphaned.length} ملف(ات) غير مستخدمة نهائياً من Cloudinary لتفريغ المساحة؟` : `Permanently delete ${orphaned.length} unused file(s) from Cloudinary to free up space?`)) return;
     setCleaning(true);
     try {
       await fetch("/api/cloudinary-cleanup", {
@@ -165,8 +165,8 @@ export function AdminStats({ stats }: { stats: Stats }) {
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
             {isAr
-              ? "ابحث عن الملفات في Cloudinary غير المرتبطة بأي عنصر في الموقع واحذفها."
-              : "Find files on Cloudinary not referenced by any item on the site and delete them."}
+              ? "ابحث عن جميع الملفات غير المستخدمة في Cloudinary (بما في ذلك الصور الافتراضية التجريبية والمخلفات) واحذفها بالكامل لتحرير مساحة التخزين."
+              : "Find all unused files in Cloudinary (including default sample media and leftovers) and wipe them completely to reclaim storage."}
           </p>
 
           {orphaned === null ? (

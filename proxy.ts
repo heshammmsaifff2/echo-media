@@ -15,6 +15,6 @@ export const config = {
      * redirected to /auth/login — which silently breaks the asset for every
      * signed-out visitor.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|mov|m4v|mp3|m4a|wav|woff|woff2|ttf|otf|txt|xml|json)$).*)",
+    "/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp4|webm|mov|MOV|m4v|mp3|m4a|wav|woff|woff2|ttf|otf|txt|xml|json)$).*)",
   ],
 };

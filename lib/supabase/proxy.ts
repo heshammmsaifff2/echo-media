@@ -52,6 +52,18 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const firstSegment = pathname.split("/")[1] ?? "";
 
+  // API routes must not be redirected to localized routes (/ar/api or /en/api)
+  if (pathname.startsWith("/api/") || pathname === "/api") {
+    return supabaseResponse;
+  }
+
+  // Rewrite any stray localized API requests (e.g. from cached 308 redirects) directly to /api
+  if (pathname.startsWith("/en/api/") || pathname.startsWith("/ar/api/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/(?:en|ar)/, "");
+    return NextResponse.rewrite(url);
+  }
+
   // The portal keeps its own unlocalized URLs.
   const isPortal = PORTAL_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
@@ -64,7 +76,7 @@ export async function updateSession(request: NextRequest) {
     if (!isLocale(firstSegment)) {
       const url = request.nextUrl.clone();
       url.pathname = localePath(preferredLocale(request), pathname);
-      return NextResponse.redirect(url, 308);
+      return NextResponse.redirect(url, 307);
     }
     return supabaseResponse;
   }
@@ -83,13 +95,10 @@ export async function updateSession(request: NextRequest) {
 
 const PORTAL_PREFIXES = ["/auth", "/login", "/admin", "/dashboard", "/protected"];
 
-/** Honour the browser's Accept-Language, defaulting to English. */
+/** Default to Arabic, unless visitor explicitly has a saved choice */
 function preferredLocale(request: NextRequest): Locale {
-  const header = request.headers.get("accept-language") ?? "";
-  const wantsArabic = header
-    .split(",")
-    .map((part) => part.trim().split(";")[0].toLowerCase())
-    .some((tag) => tag === "ar" || tag.startsWith("ar-"));
+  const cookieLocale = request.cookies.get("echo-locale")?.value;
+  if (isLocale(cookieLocale)) return cookieLocale;
 
-  return wantsArabic ? "ar" : DEFAULT_LOCALE;
+  return DEFAULT_LOCALE; // "ar"
 }

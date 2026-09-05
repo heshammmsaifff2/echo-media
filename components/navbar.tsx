@@ -20,12 +20,19 @@ export function Navbar() {
   const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
 
   const other = locale === "en" ? "ar" : "en";
-  // Inside the localized tree the switch is a real navigation, so the other
-  // language is a crawlable link. On portal pages there is no locale segment,
-  // so send the visitor to that language's home page instead.
-  const switchHref = isLocale(pathname.split("/")[1])
-    ? switchLocalePath(pathname, other)
-    : localePath(other, "/");
+  const firstSegment = pathname.split("/")[1];
+  const isSitePage = isLocale(firstSegment);
+  const switchHref = isSitePage ? switchLocalePath(pathname, other) : pathname;
+
+  const handleLanguageSwitch = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    document.cookie = `echo-locale=${other}; path=/; max-age=31536000; SameSite=Lax`;
+    localStorage.setItem("echo-locale", other);
+
+    if (!isSitePage) {
+      e.preventDefault();
+      window.location.reload();
+    }
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -96,6 +103,7 @@ export function Navbar() {
             href={switchHref}
             hrefLang={other}
             lang={other}
+            onClick={handleLanguageSwitch}
             className="rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-300 hover:border-[hsl(var(--echo-accent))] hover:text-bright cursor-pointer"
             aria-label={other === "ar" ? "التبديل إلى العربية" : "Switch to English"}
           >
@@ -195,6 +203,22 @@ export function Navbar() {
                     {isAr ? "تسجيل الدخول" : "Sign in"}
                   </Link>
                 )}
+
+                <div className="mt-2 pt-3 border-t border-border/60 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground font-medium">{isAr ? "اللغة" : "Language"}</span>
+                  <NextLink
+                    href={switchHref}
+                    hrefLang={other}
+                    lang={other}
+                    onClick={(e) => {
+                      setMobileOpen(false);
+                      handleLanguageSwitch(e);
+                    }}
+                    className="rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-[hsl(var(--echo-accent))] cursor-pointer"
+                  >
+                    {other === "ar" ? "العربية" : "English"}
+                  </NextLink>
+                </div>
               </div>
             </div>
           </motion.div>

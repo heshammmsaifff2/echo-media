@@ -44,13 +44,13 @@ export default async function Home({ params }: Params) {
       />
 
       <HeroSection />
+      <FilmSection />
       <ManifestoSection />
+      <ShowreelSection />
       <LogoMoment />
+      <FeaturedWork items={featured || []} />
       <DnaSection />
       <PositioningSection />
-      <ShowreelSection />
-      <FilmSection />
-      <FeaturedWork items={featured || []} />
       <ServicesSection />
       <ArchitectureSection />
       <ValuesSection />

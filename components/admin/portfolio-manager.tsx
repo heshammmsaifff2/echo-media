@@ -104,9 +104,10 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
 
       setDialogOpen(false);
       router.refresh();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(isAr ? "فشل الحفظ" : "Failed to save");
+      const msg = err instanceof Error ? err.message : (isAr ? "فشل الحفظ" : "Failed to save");
+      alert(msg);
     } finally {
       setLoading(false);
     }

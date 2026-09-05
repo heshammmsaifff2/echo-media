@@ -42,10 +42,11 @@ export function I18nProvider({
 }) {
   const [storedLocale, setStoredLocale] = useState<Locale>(DEFAULT_LOCALE);
 
-  // Remember the route locale so the unlocalized portal can follow it.
+  // Remember the route locale so the unlocalized portal and proxy can follow it.
   useEffect(() => {
     if (routeLocale) {
       localStorage.setItem(STORAGE_KEY, routeLocale);
+      document.cookie = `${STORAGE_KEY}=${routeLocale}; path=/; max-age=31536000; SameSite=Lax`;
     }
   }, [routeLocale]);
 

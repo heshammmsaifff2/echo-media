@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Inter, Tajawal } from "next/font/google";
 import "@/app/globals.css";
 import { I18nProvider } from "@/lib/i18n";
-import { siteUrl } from "@/lib/locale";
+import { siteUrl, DEFAULT_LOCALE, dirFor, isLocale, type Locale } from "@/lib/locale";
 import { brand } from "@/lib/brand";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { cookies } from "next/headers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,8 +27,7 @@ const tajawal = Tajawal({
  * /en and /ar tree because they are private: there is nothing here for a search
  * engine to index, so the whole subtree is marked noindex.
  *
- * No I18nProvider locale prop: the portal follows whatever language the visitor
- * last chose on the public site.
+ * Reads the visitor's choice from cookies, defaulting to Arabic (DEFAULT_LOCALE).
  */
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
@@ -35,13 +35,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
 };
 
-export default function PortalLayout({
+export default async function PortalLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies();
+  const savedLocale = cookieStore.get("echo-locale")?.value;
+  const locale: Locale = isLocale(savedLocale) ? savedLocale : DEFAULT_LOCALE;
+
   return (
     <html
-      lang="en"
-      dir="ltr"
+      lang={locale}
+      dir={dirFor(locale)}
       className={`${inter.variable} ${tajawal.variable} dark`}
       suppressHydrationWarning
     >
@@ -49,7 +53,7 @@ export default function PortalLayout({
         className="antialiased min-h-screen flex flex-col bg-background"
         suppressHydrationWarning
       >
-        <I18nProvider>
+        <I18nProvider locale={locale}>
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />

@@ -10,7 +10,10 @@ export async function uploadToCloudinary(
     body: JSON.stringify({ folder }),
   });
 
-  if (!res.ok) throw new Error("Failed to get upload signature");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Failed to get upload signature (${res.status})`);
+  }
 
   const { timestamp, signature, cloudName, apiKey } = await res.json();
 
@@ -26,7 +29,11 @@ export async function uploadToCloudinary(
     { method: "POST", body: formData }
   );
 
-  if (!uploadRes.ok) throw new Error("Upload failed");
+  if (!uploadRes.ok) {
+    const errData = await uploadRes.json().catch(() => ({}));
+    const message = errData?.error?.message || `Upload failed (${uploadRes.status})`;
+    throw new Error(message);
+  }
 
   const data = await uploadRes.json();
   return { url: data.secure_url, publicId: data.public_id };

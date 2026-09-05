@@ -8,10 +8,26 @@ export async function GET() {
   }
 
   try {
-    const result = await cloudinary.api.usage();
+    const [usageResult, imagesRes, videosRes, rawRes] = await Promise.all([
+      cloudinary.api.usage().catch(() => null),
+      cloudinary.api.resources({ type: "upload", resource_type: "image", max_results: 500 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: "upload", resource_type: "video", max_results: 500 }).catch(() => ({ resources: [] })),
+      cloudinary.api.resources({ type: "upload", resource_type: "raw", max_results: 500 }).catch(() => ({ resources: [] })),
+    ]);
 
-    const usedBytes = result.storage?.usage ?? 0;
+    const allResources = [
+      ...(imagesRes.resources || []),
+      ...(videosRes.resources || []),
+      ...(rawRes.resources || []),
+    ];
+
+    const realtimeBytes = allResources.reduce((sum, r) => sum + (r.bytes || 0), 0);
+    const realtimeCount = allResources.length;
+
+    // If account has 0 active resources, real usage is 0 B (bypassing Cloudinary's 24h lagging daily cache)
+    const usedBytes = realtimeCount === 0 ? 0 : (realtimeBytes || usageResult?.storage?.usage || 0);
     const limitBytes = 25 * 1024 * 1024 * 1024; // 25 GB free plan
+    const resourceCount = realtimeCount;
 
     return NextResponse.json({
       used: usedBytes,
@@ -20,12 +36,12 @@ export async function GET() {
       limitFormatted: formatBytes(limitBytes),
       percentage: Math.round((usedBytes / limitBytes) * 100),
       bandwidth: {
-        used: result.bandwidth?.usage ?? 0,
-        limit: result.bandwidth?.limit ?? 0,
-        usedFormatted: formatBytes(result.bandwidth?.usage ?? 0),
-        limitFormatted: formatBytes(result.bandwidth?.limit ?? 0),
+        used: usageResult?.bandwidth?.usage ?? 0,
+        limit: usageResult?.bandwidth?.limit ?? 0,
+        usedFormatted: formatBytes(usageResult?.bandwidth?.usage ?? 0),
+        limitFormatted: formatBytes(usageResult?.bandwidth?.limit ?? 0),
       },
-      resources: result.resources ?? 0,
+      resources: resourceCount,
     });
   } catch (err) {
     console.error("Cloudinary usage error:", err);
