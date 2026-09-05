@@ -6,6 +6,7 @@ import { siteUrl, DEFAULT_LOCALE, dirFor, isLocale, type Locale } from "@/lib/lo
 import { brand } from "@/lib/brand";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { SplashScreen } from "@/components/splash-screen";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -53,6 +54,7 @@ export default async function PortalLayout({
         className="antialiased min-h-screen flex flex-col bg-background"
         suppressHydrationWarning
       >
+        <SplashScreen />
         <I18nProvider locale={locale}>
           <Navbar />
           <main className="flex-1">{children}</main>

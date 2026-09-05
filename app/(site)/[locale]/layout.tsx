@@ -9,6 +9,7 @@ import { brand } from "@/lib/brand";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { SplashScreen } from "@/components/splash-screen";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -73,6 +74,7 @@ export default async function SiteLayout({
         className="antialiased min-h-screen flex flex-col bg-background"
         suppressHydrationWarning
       >
+        <SplashScreen />
         <I18nProvider locale={typed}>
           <SmoothScroll />
           <Navbar />
