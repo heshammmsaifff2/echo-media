@@ -4,15 +4,10 @@ import { Link } from "@/components/link";
 import { usePathname } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Image, ShoppingCart, Users, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { ADMIN_NAV } from "@/components/admin/nav-items";
 
-// Site copy is fixed in lib/brand.ts, so there is no CMS entry here any more.
-const NAV_ITEMS = [
-  { href: "/admin", icon: LayoutDashboard, labelEn: "Dashboard", labelAr: "الرئيسية" },
-  { href: "/admin/portfolio", icon: Image, labelEn: "Portfolio", labelAr: "الأعمال" },
-  { href: "/admin/orders", icon: ShoppingCart, labelEn: "Orders", labelAr: "الطلبات" },
-  { href: "/admin/clients", icon: Users, labelEn: "Clients", labelAr: "العملاء" },
-];
+const NAV_ITEMS = ADMIN_NAV;
 
 export function AdminSidebar({ profile }: { profile: { full_name: string; email: string } }) {
   const pathname = usePathname();

@@ -89,6 +89,18 @@ export const PAGES = {
       ar: ["محمود مكي", "مدير إبداعي", "مخرج إعلانات", "مخرج أفلام تجارية"],
     },
   },
+  contact: {
+    path: "/contact",
+    title: { en: "Contact", ar: "تواصل معنا" },
+    description: {
+      en: "Start a project with Echo Media Production. Tell us about your brand and what you want to make — we'll get back to you.",
+      ar: "ابدأ مشروعًا مع Echo Media Production. أخبرنا عن علامتك وما تريد صناعته وسنعود إليك.",
+    },
+    keywords: {
+      en: ["contact Echo Media", "start a project", "video production inquiry"],
+      ar: ["تواصل مع Echo", "ابدأ مشروع", "طلب إنتاج فيديو"],
+    },
+  },
 } satisfies Record<string, SeoEntry>;
 
 export type PageKey = keyof typeof PAGES;

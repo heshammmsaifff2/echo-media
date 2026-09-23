@@ -3,16 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { pageMetadata, organizationJsonLd } from "@/lib/seo";
 import { isLocale, type Locale } from "@/lib/locale";
 import { HeroSection } from "@/components/sections/hero";
-import { ManifestoSection } from "@/components/sections/manifesto";
 import { LogoMoment } from "@/components/sections/logo-moment";
-import { DnaSection, ValuesSection } from "@/components/sections/dna";
-import { PositioningSection } from "@/components/sections/positioning";
 import { ShowreelSection, FilmSection } from "@/components/sections/showreel";
 import { FeaturedWork } from "@/components/sections/featured-work";
-import { ServicesSection } from "@/components/sections/services";
-import { ArchitectureSection } from "@/components/sections/architecture";
-import { ProcessSection, ClientsSection } from "@/components/sections/process";
+import { ClientsSection } from "@/components/sections/process";
 import { GoalSection, CtaSection } from "@/components/sections/closing";
+import { FullPage } from "@/components/full-page";
 
 type Params = { params: Promise<{ locale: string }> };
 
@@ -43,21 +39,17 @@ export default async function Home({ params }: Params) {
         }}
       />
 
-      <HeroSection />
-      <FilmSection />
-      <ManifestoSection />
-      <ShowreelSection />
-      <LogoMoment />
+      <FullPage>
+        <HeroSection />
+        <FilmSection />
+        <ShowreelSection />
+        <LogoMoment />
+        <ClientsSection />
+        <GoalSection />
+        <CtaSection />
+      </FullPage>
+
       <FeaturedWork items={featured || []} />
-      <DnaSection />
-      <PositioningSection />
-      <ServicesSection />
-      <ArchitectureSection />
-      <ValuesSection />
-      <ProcessSection />
-      <ClientsSection />
-      <GoalSection />
-      <CtaSection />
     </>
   );
 }

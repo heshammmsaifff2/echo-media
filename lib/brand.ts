@@ -350,7 +350,37 @@ export const cta = {
     ar: "ابدأ بمحادثة. سنخبرك بصراحة ما إذا كنا البيت المناسب لها.",
   } as Bi,
   button: { en: "Start a Project", ar: "ابدأ مشروعًا" } as Bi,
-  href: "/auth/sign-up",
+  href: "/contact",
+} as const;
+
+/* ── Contact page ─────────────────────────────────────────────────────── */
+
+export const contactPage = {
+  eyebrow: { en: "Contact", ar: "تواصل" } as Bi,
+  heading: {
+    en: "Tell us what you want to make.",
+    ar: "احكِ لنا عمّا تريد صناعته.",
+  } as Bi,
+  body: {
+    en: "Send us a message and we'll get back to you. Tell us about the brand, the project, and what you need.",
+    ar: "أرسل لنا رسالة وسنعود إليك. أخبرنا عن العلامة والمشروع وما تحتاجه.",
+  } as Bi,
+  fields: {
+    name: { en: "Your name", ar: "الاسم" } as Bi,
+    email: { en: "Email", ar: "البريد الإلكتروني" } as Bi,
+    phone: { en: "Phone (optional)", ar: "الهاتف (اختياري)" } as Bi,
+    message: { en: "Your message", ar: "رسالتك" } as Bi,
+  },
+  submit: { en: "Send message", ar: "إرسال الرسالة" } as Bi,
+  sending: { en: "Sending…", ar: "جارٍ الإرسال…" } as Bi,
+  success: {
+    en: "Thanks — your message is on its way. We'll be in touch.",
+    ar: "شكرًا — وصلتنا رسالتك وسنتواصل معك قريبًا.",
+  } as Bi,
+  error: {
+    en: "Something went wrong. Please try again.",
+    ar: "حدث خطأ ما. حاول مرة أخرى.",
+  } as Bi,
 } as const;
 
 /* ── Art House Studio ─────────────────────────────────────────────────── */
@@ -472,9 +502,11 @@ export const founder = {
 
 export const nav = {
   links: [
+    { label: { en: "Home", ar: "الرئيسية" } as Bi, href: "/" },
     { label: { en: "Work", ar: "الأعمال" } as Bi, href: "/portfolio" },
     { label: { en: "Studio", ar: "الاستوديو" } as Bi, href: "/art-house-studio" },
     { label: { en: "Founder", ar: "المؤسس" } as Bi, href: "/mahmoud-mekky" },
+    { label: { en: "Contact", ar: "التواصل" } as Bi, href: "/contact" },
   ],
 } as const;
 

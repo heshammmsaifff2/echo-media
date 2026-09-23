@@ -4,9 +4,9 @@ import "@/app/globals.css";
 import { I18nProvider } from "@/lib/i18n";
 import { siteUrl, DEFAULT_LOCALE, dirFor, isLocale, type Locale } from "@/lib/locale";
 import { brand } from "@/lib/brand";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
+import { PortalChrome } from "@/components/portal-chrome";
 import { SplashScreen } from "@/components/splash-screen";
+import { getSiteContact } from "@/lib/settings-server";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -42,6 +42,7 @@ export default async function PortalLayout({
   const cookieStore = await cookies();
   const savedLocale = cookieStore.get("echo-locale")?.value;
   const locale: Locale = isLocale(savedLocale) ? savedLocale : DEFAULT_LOCALE;
+  const contact = await getSiteContact();
 
   return (
     <html
@@ -56,9 +57,7 @@ export default async function PortalLayout({
       >
         <SplashScreen />
         <I18nProvider locale={locale}>
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <PortalChrome contact={contact}>{children}</PortalChrome>
         </I18nProvider>
       </body>
     </html>

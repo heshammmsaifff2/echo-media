@@ -10,6 +10,9 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { SplashScreen } from "@/components/splash-screen";
+import { ContentProvider } from "@/components/content-provider";
+import { getSectionMap } from "@/lib/content-server";
+import { getSiteContact } from "@/lib/settings-server";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -62,6 +65,7 @@ export default async function SiteLayout({
   if (!isLocale(locale)) notFound();
 
   const typed = locale as Locale;
+  const [sections, contact] = await Promise.all([getSectionMap(), getSiteContact()]);
 
   return (
     <html
@@ -76,10 +80,12 @@ export default async function SiteLayout({
       >
         <SplashScreen />
         <I18nProvider locale={typed}>
-          <SmoothScroll />
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <ContentProvider value={sections}>
+            <SmoothScroll />
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer contact={contact} />
+          </ContentProvider>
         </I18nProvider>
       </body>
     </html>

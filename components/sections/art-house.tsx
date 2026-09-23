@@ -2,7 +2,6 @@
 
 import { useI18n } from "@/lib/i18n";
 import { artHouse } from "@/lib/brand";
-import { LazyVideo } from "@/components/lazy-video";
 import {
   FadeIn,
   StaggerContainer,
@@ -10,107 +9,140 @@ import {
   LineReveal,
   LineRevealInView,
 } from "@/components/motion";
+import { MediaPanel, PanelTag } from "@/components/media-panel";
+import { useSection } from "@/components/content-provider";
+import { FullPage } from "@/components/full-page";
 import { CtaSection } from "@/components/sections/closing";
 
+type Item = { name: string; body: string };
+
+/** Localize a stored obj-list override, else fall back to the brand items. */
+function useItems(
+  override: { en: Record<string, string>[]; ar: Record<string, string>[] } | null,
+  isAr: boolean,
+  fallback: readonly { name: { en: string; ar: string }; body: { en: string; ar: string } }[]
+): Item[] {
+  if (override) {
+    const arr = isAr ? override.ar : override.en;
+    if (Array.isArray(arr) && arr.length) {
+      return arr.map((r) => ({ name: r.name ?? "", body: r.body ?? "" }));
+    }
+  }
+  return fallback.map((i) => ({
+    name: isAr ? i.name.ar : i.name.en,
+    body: isAr ? i.body.ar : i.body.en,
+  }));
+}
+
 export function ArtHouseContent() {
-  const { pick } = useI18n();
+  const { pick, isAr } = useI18n();
+
+  const heroS = useSection("studio.hero");
+  const introS = useSection("studio.intro");
+  const offerS = useSection("studio.offer");
+  const equipS = useSection("studio.equipment");
+
+  const offerItems = useItems(
+    offerS.field("items", null),
+    isAr,
+    artHouse.offer.items
+  );
+  const equipItems = useItems(
+    equipS.field("items", null),
+    isAr,
+    artHouse.equipment.items
+  );
 
   return (
-    <>
-      <section className="relative flex min-h-[85svh] items-end overflow-hidden pt-32 grain">
-        <LazyVideo
-          src="/final.mp4"
-          poster="/posters/final.jpg"
-          mode="ambient"
-          label="Art House Studio"
-          className="absolute inset-0 h-full w-full"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/75 to-background/40" />
+    <FullPage>
+      {/* Hero — the space, running full-bleed. */}
+      <MediaPanel
+        bg={heroS.bg}
+        label="Art House Studio"
+        overlay="default"
+        align="bottom"
+        minH="screen"
+        contentClassName="pt-32"
+        priority
+      >
+        <p className="eyebrow mb-8 text-bright/70">{pick(heroS.field("eyebrow", artHouse.eyebrow))}</p>
+        <h1 className="display-xl text-bright drop-shadow-[0_2px_40px_rgba(0,0,0,0.55)]">
+          <LineReveal lines={[pick(heroS.field("title", artHouse.title))]} delay={0.15} />
+        </h1>
+        <p className="mt-8 max-w-2xl text-xl text-foreground sm:text-2xl">
+          {pick(heroS.field("subtitle", artHouse.subtitle))}
+        </p>
+      </MediaPanel>
 
-        <div className="relative mx-auto w-full max-w-[1400px] px-6 pb-24 sm:px-10">
-          <p className="eyebrow mb-8">{pick(artHouse.eyebrow)}</p>
-          <h1 className="display-lg text-bright">
-            <LineReveal lines={[pick(artHouse.title)]} delay={0.15} />
-          </h1>
-          <p className="mt-8 max-w-2xl text-xl text-foreground sm:text-2xl">
-            {pick(artHouse.subtitle)}
+      {/* The pitch, one large statement. */}
+      <MediaPanel bg={introS.bg} label="The space" overlay="strong" align="center" minH="large">
+        <FadeIn>
+          <p className="display-md max-w-5xl text-bright drop-shadow-[0_2px_24px_rgba(0,0,0,0.7)]">
+            {pick(introS.field("body", artHouse.body))}
           </p>
-        </div>
-      </section>
+        </FadeIn>
+      </MediaPanel>
 
-      <section className="border-t border-border bg-background py-28 sm:py-36">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
-          <FadeIn>
-            <p className="max-w-4xl text-xl leading-relaxed text-muted-foreground sm:text-2xl">
-              {pick(artHouse.body)}
-            </p>
-          </FadeIn>
-        </div>
-      </section>
+      {/* What the studio offers — big alternating editorial rows, not a grid. */}
+      <MediaPanel
+        bg={offerS.bg}
+        label="What the studio offers"
+        overlay="strong"
+        align="center"
+        minH="screen"
+      >
+        <PanelTag>{pick(offerS.field("heading", artHouse.offer.heading))}</PanelTag>
 
-      <section className="border-t border-border bg-surface py-28 sm:py-40 grain">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
-          <div className="mb-16 flex items-center gap-6">
-            <span className="eyebrow whitespace-nowrap">
-              {pick(artHouse.offer.heading)}
-            </span>
-            <span className="rule" />
-          </div>
-
-          <StaggerContainer className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-border bg-border md:grid-cols-2 lg:grid-cols-3">
-            {artHouse.offer.items.map((item, i) => (
-              <StaggerItem key={i} className="group bg-surface">
-                <div className="h-full p-10 transition-colors duration-500 group-hover:bg-background">
-                  <span className="font-mono text-xs text-[hsl(var(--echo-accent))]">
+        <StaggerContainer className="flex flex-col gap-6 sm:gap-8" staggerDelay={0.07}>
+          {offerItems.map((item, i) => (
+            <StaggerItem key={i}>
+              <div
+                className={`flex flex-col gap-1.5 sm:max-w-3xl ${
+                  i % 2 === 1 ? "sm:ms-auto sm:text-end" : ""
+                }`}
+              >
+                <h3 className="text-2xl font-bold leading-none text-bright drop-shadow-[0_2px_24px_rgba(0,0,0,0.7)] sm:text-4xl">
+                  <span className="me-3 font-mono text-sm font-normal text-[hsl(var(--echo-accent))]">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <h3 className="mt-6 text-2xl font-semibold text-bright">
-                    {pick(item.name)}
-                  </h3>
-                  <p className="mt-3 leading-relaxed text-muted-foreground">
-                    {pick(item.body)}
-                  </p>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
+                  {item.name}
+                </h3>
+                <p className="text-base leading-relaxed text-foreground/85">{item.body}</p>
+              </div>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </MediaPanel>
 
-      <section className="border-t border-border bg-background py-28 sm:py-40">
-        <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
-          <div className="mb-16 flex items-center gap-6">
-            <span className="eyebrow whitespace-nowrap">
-              {pick(artHouse.equipment.heading)}
-            </span>
-            <span className="rule" />
-          </div>
+      {/* Equipment — a large two-column definition list, no boxes. */}
+      <MediaPanel
+        bg={equipS.bg}
+        label="Equipment"
+        overlay="strong"
+        align="center"
+        minH="screen"
+      >
+        <PanelTag>{pick(equipS.field("heading", artHouse.equipment.heading))}</PanelTag>
 
-          <h2 className="display-md mb-20 max-w-3xl text-bright">
-            <LineRevealInView lines={[pick(artHouse.equipment.body)]} />
-          </h2>
+        <h2 className="display-md mb-8 max-w-3xl text-bright drop-shadow-[0_2px_24px_rgba(0,0,0,0.7)]">
+          <LineRevealInView lines={[pick(equipS.field("body", artHouse.equipment.body))]} />
+        </h2>
 
-          <div className="border-t border-border">
-            {artHouse.equipment.items.map((item, i) => (
-              <FadeIn key={i} delay={i * 0.05}>
-                <div className="group grid grid-cols-1 gap-4 border-b border-border py-8 transition-colors duration-500 hover:bg-surface md:grid-cols-12 md:items-baseline md:gap-8 md:px-4">
-                  <span className="font-mono text-xs text-[hsl(var(--echo-accent))] md:col-span-1">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <h3 className="text-xl font-semibold text-bright md:col-span-5">
-                    {pick(item.name)}
-                  </h3>
-                  <p className="text-muted-foreground md:col-span-6">
-                    {pick(item.body)}
-                  </p>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
-      </section>
+        <StaggerContainer className="flex flex-col" staggerDelay={0.04}>
+          {equipItems.map((item, i) => (
+            <StaggerItem key={i}>
+              <div className="grid grid-cols-1 items-baseline gap-1 border-t border-white/15 py-4 md:grid-cols-12 md:gap-8">
+                <h3 className="text-xl font-semibold text-bright md:col-span-5">
+                  {item.name}
+                </h3>
+                <p className="text-base text-foreground/80 md:col-span-7">{item.body}</p>
+              </div>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </MediaPanel>
 
       <CtaSection />
-    </>
+    </FullPage>
   );
 }

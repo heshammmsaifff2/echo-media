@@ -17,9 +17,9 @@
   ],
 
   "social": [
+    { "name": "Facebook", "url": "https://facebook.com/" },
     { "name": "Instagram", "url": "https://instagram.com/" },
-    { "name": "YouTube", "url": "https://youtube.com/" },
-    { "name": "LinkedIn", "url": "https://linkedin.com/" }
+    { "name": "TikTok", "url": "https://tiktok.com/" }
   ],
 
   "$comment_location": "OPTIONAL. Left empty on purpose so the site does not tie itself to one physical location. Fill any of these in and the footer address block and the structured data will appear automatically; leave them empty and nothing is shown.",

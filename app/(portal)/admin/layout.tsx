@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
+import { AdminNavbar } from "@/components/admin/admin-navbar";
 
 export default async function AdminLayout({
   children,
@@ -9,10 +10,13 @@ export default async function AdminLayout({
   const profile = await requireAdmin();
 
   return (
-    /* pt-20 clears the fixed site navbar. */
-    <div className="flex min-h-[calc(100vh-5rem)] pt-20">
-      <AdminSidebar profile={profile} />
-      <main className="flex-1 overflow-auto p-6 lg:p-8">{children}</main>
+    <div className="flex min-h-screen flex-col">
+      {/* Mobile top bar (the sidebar covers desktop). */}
+      <AdminNavbar profile={profile} />
+      <div className="flex flex-1">
+        <AdminSidebar profile={profile} />
+        <main className="flex-1 overflow-auto p-6 lg:p-8">{children}</main>
+      </div>
     </div>
   );
 }

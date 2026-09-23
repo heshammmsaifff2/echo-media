@@ -10,13 +10,17 @@ import { switchLocalePath, isLocale, localePath } from "@/lib/locale";
 import { nav } from "@/lib/brand";
 import { Logo } from "@/components/logo";
 import { createClient } from "@/lib/supabase/client";
-import { Menu, X, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, ChevronUp } from "lucide-react";
 
 export function Navbar() {
   const { locale, isAr, pick } = useI18n();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // Hide-on-scroll: past the first component the navbar tucks away and a small
+  // toggle reveals it. `navOpen` is the manual override from that toggle.
+  const [pastFirst, setPastFirst] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
 
   const other = locale === "en" ? "ar" : "en";
@@ -49,13 +53,33 @@ export function Navbar() {
     });
   }, []);
 
-  // Transparent over the hero, solid once the page moves.
+  // Transparent over the hero, solid once the page moves. Past the first
+  // component (~one screen) the bar hides until the visitor reveals it.
+  // Polled on rAF rather than the scroll event, because the smooth-scroll layer
+  // does not always emit a native scroll event.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    let raf = 0;
+    let lastKey = -1;
+    const loop = () => {
+      const y = window.scrollY;
+      const threshold = Math.max(320, window.innerHeight * 0.7);
+      const isScrolled = y > 24;
+      const isPast = y > threshold;
+      const key = (isScrolled ? 1 : 0) + (isPast ? 2 : 0);
+      if (key !== lastKey) {
+        lastKey = key;
+        setScrolled(isScrolled);
+        setPastFirst(isPast);
+        if (!isPast) setNavOpen(false);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
   }, []);
+
+  // Only the public site pages hide the bar; the portal keeps it pinned.
+  const hidden = isSitePage && pastFirst && !navOpen;
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -74,8 +98,11 @@ export function Navbar() {
         : "Account";
 
   return (
+    <>
     <header
       className={`fixed top-0 z-50 w-full transition-all duration-500 ${
+        hidden ? "-translate-y-full" : "translate-y-0"
+      } ${
         scrolled
           ? "border-b border-border bg-background/80 backdrop-blur-xl"
           : "border-b border-transparent bg-transparent"
@@ -225,5 +252,18 @@ export function Navbar() {
         )}
       </AnimatePresence>
     </header>
+
+    {/* Reveal / hide toggle — appears once the bar has tucked away. */}
+    {isSitePage && pastFirst && (
+      <button
+        type="button"
+        onClick={() => setNavOpen((o) => !o)}
+        aria-label={navOpen ? (isAr ? "إخفاء القائمة" : "Hide menu") : (isAr ? "إظهار القائمة" : "Show menu")}
+        className="fixed bottom-5 end-5 z-[60] grid h-12 w-12 place-items-center rounded-full bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))] shadow-[0_8px_30px_rgba(0,0,0,0.5)] ring-4 ring-[hsl(var(--echo-accent))]/20 transition-transform duration-300 hover:scale-110 cursor-pointer"
+      >
+        {navOpen ? <ChevronUp size={22} /> : <Menu size={22} />}
+      </button>
+    )}
+    </>
   );
 }

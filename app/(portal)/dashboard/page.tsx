@@ -12,7 +12,7 @@ export default async function DashboardPage() {
 
   const { data: orders } = await supabase
     .from("client_orders")
-    .select("*")
+    .select("*, order_payments(*)")
     .eq("client_id", profile!.id)
     .order("created_at", { ascending: false });
 

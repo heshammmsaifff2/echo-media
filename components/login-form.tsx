@@ -33,8 +33,12 @@ export function LoginForm({
     setError(null);
 
     try {
+      // Clients sign in with a username (no "@"); map it to the synthetic email
+      // their account was created with. Admins keep using their real email.
+      const id = email.trim();
+      const loginEmail = id.includes("@") ? id : `${id.toLowerCase()}@clients.echo.local`;
       const { error: authError } =
-        await supabase.auth.signInWithPassword({ email, password });
+        await supabase.auth.signInWithPassword({ email: loginEmail, password });
       if (authError) throw authError;
 
       window.location.href = "/auth/callback";
@@ -64,16 +68,18 @@ export function LoginForm({
             <div className="flex flex-col gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="email">
-                  {isAr ? "البريد الإلكتروني" : "Email"}
+                  {isAr ? "اسم المستخدم أو البريد الإلكتروني" : "Username or email"}
                 </Label>
                 <Input
                   id="email"
-                  type="email"
-                  placeholder="you@example.com"
+                  type="text"
+                  placeholder={isAr ? "اسم المستخدم أو you@example.com" : "username or you@example.com"}
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   dir="ltr"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
               </div>
               <div className="grid gap-2">

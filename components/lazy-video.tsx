@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { useWideViewport } from "@/components/use-viewport";
 
 /**
  * Video that costs nothing until it is nearly on screen.
@@ -16,6 +17,7 @@ export function LazyVideo({
   src,
   poster,
   mode = "ambient",
+  fit = "cover",
   className,
   videoClassName,
   label,
@@ -24,16 +26,26 @@ export function LazyVideo({
   poster?: string;
   /** `ambient` = muted autoplay loop. `feature` = user presses play, with sound. */
   mode?: "ambient" | "feature";
+  /** `contain` shows the whole frame (portrait or landscape) over a blurred fill. */
+  fit?: "cover" | "contain";
   className?: string;
   videoClassName?: string;
   label?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const backdropRef = useRef<HTMLVideoElement>(null);
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(true);
+  // Ambient loops are always muted. Feature videos start unmuted so the visitor
+  // hears sound the moment they press play (a click is a valid user gesture, so
+  // this never trips the browser's autoplay-with-sound block).
+  const [muted, setMuted] = useState(mode !== "feature");
   const { isAr } = useI18n();
+  // On phones a "show the whole frame" fit leaves big blurred bars, so we only
+  // do contain+blur on wider screens; phones fill the frame (cover) instead.
+  const wide = useWideViewport();
+  const isContain = fit === "contain" && wide;
 
   // Attach the source only when the section is close to view.
   useEffect(() => {
@@ -73,6 +85,23 @@ export function LazyVideo({
     return () => io.disconnect();
   }, [mode, armed]);
 
+  // The blurred fill is a live, muted copy of the same video; pause it off screen.
+  useEffect(() => {
+    if (!isContain || !armed) return;
+    const el = hostRef.current;
+    const bd = backdropRef.current;
+    if (!el || !bd) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) bd.play().catch(() => {});
+        else bd.pause();
+      },
+      { threshold: 0.15 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [fit, armed]);
+
   const toggle = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -96,6 +125,23 @@ export function LazyVideo({
 
   return (
     <div ref={hostRef} className={cn("relative overflow-hidden bg-surface", className)}>
+      {/* Blurred fill so a portrait/landscape frame shown in full never leaves
+          empty bars — a live, muted, blown-up copy of the same video playing
+          behind it (falls back to the poster until it loads). */}
+      {isContain && (
+        <video
+          ref={backdropRef}
+          src={armed ? src : undefined}
+          poster={poster}
+          muted
+          loop
+          playsInline
+          preload={armed ? "metadata" : "none"}
+          autoPlay={armed}
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl"
+        />
+      )}
       <video
         ref={videoRef}
         src={armed ? src : undefined}
@@ -106,7 +152,11 @@ export function LazyVideo({
         preload={armed ? "metadata" : "none"}
         autoPlay={isAmbient && armed}
         aria-label={label}
-        className={cn("h-full w-full object-cover", videoClassName)}
+        className={cn(
+          "relative h-full w-full",
+          isContain ? "object-contain" : "object-cover",
+          videoClassName
+        )}
       />
 
       {!isAmbient && (

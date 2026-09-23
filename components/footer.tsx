@@ -4,17 +4,18 @@ import { Link } from "@/components/link";
 import { useI18n } from "@/lib/i18n";
 import {
   brand,
-  contact,
+  contact as defaultContact,
   footer,
   nav,
   architecture,
   telHref,
   whatsappHref,
+  type Contact,
 } from "@/lib/brand";
 import { Logo } from "@/components/logo";
 import { Mail, Phone, MapPin, MessageCircle, ArrowUpRight } from "lucide-react";
 
-export function Footer() {
+export function Footer({ contact = defaultContact }: { contact?: Contact }) {
   const { pick, isAr } = useI18n();
   const year = new Date().getFullYear();
 
