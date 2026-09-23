@@ -24,8 +24,18 @@ export async function uploadToCloudinary(
   formData.append("api_key", apiKey);
   formData.append("folder", folder);
 
+  // Upload through the endpoint that matches the file. Cloudinary caps `auto`
+  // (and images) at 10 MB on the free plan, but allows up to 100 MB on the
+  // video endpoint — so a large background video must go to /video/upload.
+  // resource_type is not part of the signed params, so this is safe.
+  const resourceType = file.type.startsWith("video/")
+    ? "video"
+    : file.type.startsWith("image/")
+      ? "image"
+      : "auto";
+
   const uploadRes = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+    `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
     { method: "POST", body: formData }
   );
 
