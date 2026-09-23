@@ -31,8 +31,8 @@ export function FilmSection() {
     ar: "إضاءة مدروسة. تصنع الفارق.",
   });
 
-  const src = bg.type === "video" && bg.url ? bg.url : "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167380/echo/site/final_2.mp4";
-  const poster = bg.poster ?? "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167388/echo/site/posters/final2.png";
+  const src = bg.type === "video" && bg.url ? bg.url : "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final_2.mp4";
+  const poster = bg.poster ?? "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final2.png";
 
   // Lock the page and allow Esc to close while the full player is open.
   useEffect(() => {
