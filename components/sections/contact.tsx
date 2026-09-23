@@ -38,7 +38,7 @@ export function ContactContent() {
 
   return (
     <MediaPanel
-      image="/posters/final.jpg"
+      image="https://res.cloudinary.com/ai39ujhm/image/upload/v1790167385/echo/site/posters/final.jpg"
       label="Contact"
       overlay="strong"
       align="center"

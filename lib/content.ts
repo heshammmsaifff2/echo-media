@@ -89,7 +89,7 @@ export const SECTIONS: SectionDef[] = [
     page: "home",
     label: L("Hero", "الواجهة"),
     media: true,
-    defaultBg: { type: "video", url: "/final.mp4", poster: "/posters/final.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167365/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167385/echo/site/posters/final.jpg" },
     fields: [
       { id: "eyebrow", label: L("Eyebrow", "سطر علوي"), type: "bi", def: hero.eyebrow },
       { id: "headline", label: L("Headline (one line per row)", "العنوان (سطر لكل صف)"), type: "biList", def: hero.headline },
@@ -103,7 +103,7 @@ export const SECTIONS: SectionDef[] = [
     page: "home",
     label: L("Brand film (with sound)", "الفيلم (بصوت)"),
     media: true,
-    defaultBg: { type: "video", url: "/final_2.mp4", poster: "/posters/final2.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167380/echo/site/final_2.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167388/echo/site/posters/final2.png" },
     fields: [
       { id: "tag", label: L("Tag", "الوسم"), type: "bi", def: L("Selected Work", "من أعمالنا") },
       { id: "title", label: L("Title", "العنوان"), type: "bi", def: L("Intentional lighting. Crafted for impact.", "إضاءة مدروسة. تصنع الفارق.") },
@@ -114,7 +114,7 @@ export const SECTIONS: SectionDef[] = [
     page: "home",
     label: L("The Echo style", "أسلوب Echo"),
     media: true,
-    defaultBg: { type: "video", url: "/vid1-16-9.mp4", poster: "/posters/vid1.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167382/echo/site/vid1-16-9.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167389/echo/site/posters/vid1.jpg" },
     fields: [
       { id: "label", label: L("Label", "التصنيف"), type: "bi", def: style.label },
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: style.heading },
@@ -127,7 +127,7 @@ export const SECTIONS: SectionDef[] = [
     page: "home",
     label: L("Logo moment", "لحظة اللوجو"),
     media: true,
-    defaultBg: { type: "image", url: "/posters/vid1.jpg", poster: null },
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167389/echo/site/posters/vid1.jpg", poster: null },
     fields: [
       { id: "motto", label: L("Motto", "الشعار"), type: "bi", def: L(brand.motto, brand.motto) },
       { id: "philosophy", label: L("Sub-label", "سطر سفلي"), type: "bi", def: L("Internal philosophy", "الفلسفة الداخلية") },
@@ -138,7 +138,7 @@ export const SECTIONS: SectionDef[] = [
     page: "home",
     label: L("Who we work with", "مع من نعمل"),
     media: true,
-    defaultBg: { type: "video", url: "/vid2-a6-9.mp4", poster: "/posters/vid2.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167384/echo/site/vid2-a6-9.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167390/echo/site/posters/vid2.jpg" },
     fields: [
       { id: "label", label: L("Label", "التصنيف"), type: "bi", def: clients.label },
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: clients.heading },
@@ -151,7 +151,7 @@ export const SECTIONS: SectionDef[] = [
     page: "home",
     label: L("2030 goal", "هدف ٢٠٣٠"),
     media: true,
-    defaultBg: { type: "video", url: "/final.mp4", poster: "/posters/final.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167365/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167385/echo/site/posters/final.jpg" },
     fields: [
       { id: "label", label: L("Label", "التصنيف"), type: "bi", def: goal.label },
       { id: "question", label: L("Question", "السؤال"), type: "bi", def: goal.question },
@@ -163,7 +163,7 @@ export const SECTIONS: SectionDef[] = [
     page: "global",
     label: L("Call to action (all pages)", "الدعوة (كل الصفحات)"),
     media: true,
-    defaultBg: { type: "image", url: "/posters/final2.jpg", poster: null },
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167388/echo/site/posters/final2.png", poster: null },
     fields: [
       { id: "tag", label: L("Tag", "الوسم"), type: "bi", def: L("Let's talk", "لنبدأ") },
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: cta.heading },
@@ -178,7 +178,7 @@ export const SECTIONS: SectionDef[] = [
     page: "studio",
     label: L("Studio hero", "واجهة الاستوديو"),
     media: true,
-    defaultBg: { type: "video", url: "/final.mp4", poster: "/posters/final.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167365/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167385/echo/site/posters/final.jpg" },
     fields: [
       { id: "eyebrow", label: L("Eyebrow", "سطر علوي"), type: "bi", def: artHouse.eyebrow },
       { id: "title", label: L("Title", "العنوان"), type: "bi", def: artHouse.title },
@@ -190,7 +190,7 @@ export const SECTIONS: SectionDef[] = [
     page: "studio",
     label: L("Studio intro", "مقدمة الاستوديو"),
     media: true,
-    defaultBg: { type: "image", url: "/posters/vid1.jpg", poster: null },
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167389/echo/site/posters/vid1.jpg", poster: null },
     fields: [{ id: "body", label: L("Statement", "النص"), type: "biLong", def: artHouse.body }],
   },
   {
@@ -198,7 +198,7 @@ export const SECTIONS: SectionDef[] = [
     page: "studio",
     label: L("What the studio offers", "ماذا يقدّم الاستوديو"),
     media: true,
-    defaultBg: { type: "image", url: "/posters/vid2.jpg", poster: null },
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167390/echo/site/posters/vid2.jpg", poster: null },
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: artHouse.offer.heading },
       {
@@ -218,7 +218,7 @@ export const SECTIONS: SectionDef[] = [
     page: "studio",
     label: L("Equipment", "المعدات"),
     media: true,
-    defaultBg: { type: "image", url: "/posters/final2.jpg", poster: null },
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167388/echo/site/posters/final2.png", poster: null },
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: artHouse.equipment.heading },
       { id: "body", label: L("Sub-heading", "العنوان الفرعي"), type: "biLong", def: artHouse.equipment.body },
@@ -241,7 +241,7 @@ export const SECTIONS: SectionDef[] = [
     page: "founder",
     label: L("Founder hero", "واجهة المؤسس"),
     media: true,
-    defaultBg: { type: "video", url: "/vid1-16-9.mp4", poster: "/posters/vid1.jpg" },
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/v1790167382/echo/site/vid1-16-9.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167389/echo/site/posters/vid1.jpg" },
     fields: [
       { id: "role", label: L("Role", "المنصب"), type: "bi", def: founder.role },
       { id: "name", label: L("Name", "الاسم"), type: "bi", def: founder.name },
@@ -254,7 +254,7 @@ export const SECTIONS: SectionDef[] = [
     page: "founder",
     label: L("Where he works", "أين يعمل"),
     media: true,
-    defaultBg: { type: "image", url: "/posters/final.jpg", poster: null },
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/v1790167385/echo/site/posters/final.jpg", poster: null },
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: founder.focus.heading },
       {
