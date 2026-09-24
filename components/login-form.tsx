@@ -43,7 +43,14 @@ export function LoginForm({
 
       window.location.href = "/auth/callback";
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : isAr ? "حدث خطأ" : "An error occurred");
+      const rawMessage = error instanceof Error ? error.message : "";
+      let message = isAr ? "حدث خطأ أثناء تسجيل الدخول" : "An error occurred during sign in";
+      if (rawMessage.toLowerCase().includes("invalid login credentials")) {
+        message = isAr ? "اسم المستخدم أو كلمة المرور غير صحيحة" : "Invalid username or password";
+      } else if (rawMessage) {
+        message = rawMessage;
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -83,17 +90,9 @@ export function LoginForm({
                 />
               </div>
               <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">
-                    {isAr ? "كلمة المرور" : "Password"}
-                  </Label>
-                  <Link
-                    href="/auth/forgot-password"
-                    className="ml-auto inline-block text-xs underline-offset-4 hover:underline text-muted-foreground"
-                  >
-                    {isAr ? "نسيت كلمة المرور؟" : "Forgot password?"}
-                  </Link>
-                </div>
+                <Label htmlFor="password">
+                  {isAr ? "كلمة المرور" : "Password"}
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -109,12 +108,6 @@ export function LoginForm({
                   ? isAr ? "جاري تسجيل الدخول..." : "Signing in..."
                   : isAr ? "تسجيل الدخول" : "Sign In"}
               </Button>
-            </div>
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              {isAr ? "ليس لديك حساب؟" : "Don't have an account?"}{" "}
-              <Link href="/auth/sign-up" className="underline underline-offset-4 text-foreground">
-                {isAr ? "إنشاء حساب" : "Sign up"}
-              </Link>
             </div>
           </form>
         </CardContent>
