@@ -120,8 +120,48 @@ function formatCountdown(ms: number, isAr: boolean) {
   return isAr ? `${minutes} دقيقة متبقية` : `${minutes}m remaining`;
 }
 
+type DeviceType = "ios" | "android" | "desktop";
+
+function AppleIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 170 170" fill="currentColor">
+      <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.08-7.61-7.8-11.73-14.14-5.37-8.31-9.5-17.71-12.39-28.18-2.88-10.47-4.33-20.64-4.33-30.52 0-14.88 3.84-27.24 11.51-37.09 7.68-9.84 17.09-14.86 28.24-15.06 5.26 0 10.85 1.44 16.78 4.31 5.92 2.88 9.77 4.37 11.53 4.48 1.54 0 5.48-1.57 11.83-4.71 6.34-3.14 11.9-4.52 16.67-4.14 12.8.64 22.95 5.76 30.43 15.35-11.18 6.77-16.66 16.03-16.43 27.76.24 9.17 3.75 16.89 10.54 23.16 6.79 6.27 14.88 9.72 24.28 10.36-2.45 7.42-5.48 15.02-9.08 22.8zM119.22 31.84c0-7.72 2.76-14.97 8.28-21.75 5.53-6.77 12.41-10.79 20.64-12.06.13 1.09.2 2.05.2 2.88 0 7.5-2.91 14.76-8.73 21.79-5.83 7.03-12.87 10.96-21.13 11.8-0.26-.88-.41-1.77-.41-2.66z" />
+    </svg>
+  );
+}
+
+function AndroidIcon({ className = "w-3.5 h-3.5" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.997-3.459a.416.416 0 00-.1521-.5676.416.416 0 00-.568.1521l-2.0223 3.503C15.5902 8.4116 13.8533 8.1 12 8.1c-1.8533 0-3.5902.3116-5.1361.8499L4.8416 5.4469a.4161.4161 0 00-.568-.1521.4158.4158 0 00-.1521.5676l1.997 3.459C2.6889 10.9757 0 14.5304 0 18.7h24c0-4.1696-2.6889-7.7243-6.1185-9.3786" />
+    </svg>
+  );
+}
+
+function useDeviceType(): DeviceType {
+  const [deviceType, setDeviceType] = useState<DeviceType>("desktop");
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = navigator.userAgent || navigator.vendor || "";
+    const isIOS =
+      /iPad|iPhone|iPod/i.test(ua) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      setDeviceType("ios");
+    } else if (/android/i.test(ua)) {
+      setDeviceType("android");
+    } else {
+      setDeviceType("desktop");
+    }
+  }, []);
+
+  return deviceType;
+}
+
 function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const router = useRouter();
+  const deviceType = useDeviceType();
   const remaining = useCountdown(order.delivery_unlocked_at);
   const [uploading, setUploading] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -129,46 +169,52 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const [receiptView, setReceiptView] = useState<string | null>(null);
   const [sharingIndex, setSharingIndex] = useState<number | null>(null);
-  const [canShareFiles, setCanShareFiles] = useState(false);
-
-  useEffect(() => {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
-      try {
-        const testFile = new File(["test"], "test.txt", { type: "text/plain" });
-        if (navigator.canShare({ files: [testFile] })) {
-          setCanShareFiles(true);
-        }
-      } catch {
-        setCanShareFiles(false);
-      }
-    }
-  }, []);
 
   const handleShareOrSave = async (url: string, meta: ReturnType<typeof getDeliveryFileMeta>, index: number) => {
-    if (typeof navigator === "undefined" || !navigator.share) return;
     setSharingIndex(index);
+    const directUrl = getDirectDownloadUrl(url);
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch file");
-      const blob = await res.blob();
-      const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
-      const mime = blob.type || (meta.isVideo ? `video/${ext}` : meta.isImage ? `image/${ext}` : "application/octet-stream");
-      const file = new File([blob], meta.name, { type: mime });
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Failed to fetch file");
+        const blob = await res.blob();
+        const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
+        const mime = blob.type || (meta.isVideo ? `video/${ext}` : meta.isImage ? `image/${ext}` : "application/octet-stream");
+        const file = new File([blob], meta.name, { type: mime });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: meta.name,
-        });
-      } else {
-        await navigator.share({
-          title: meta.name,
-          url: getDirectDownloadUrl(url),
-        });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: meta.name,
+          });
+          return;
+        } else {
+          await navigator.share({
+            title: meta.name,
+            url: directUrl,
+          });
+          return;
+        }
       }
+      // If Web Share API is not available on this browser, trigger direct download:
+      const a = document.createElement("a");
+      a.href = directUrl;
+      a.download = meta.name;
+      a.target = "_blank";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } catch (err: unknown) {
       if ((err as Error)?.name !== "AbortError") {
-        console.error("Share error:", err);
+        console.error("Download/Share error:", err);
+        // Fallback: trigger direct download/open in new tab
+        const a = document.createElement("a");
+        a.href = directUrl;
+        a.download = meta.name;
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       }
     } finally {
       setSharingIndex(null);
@@ -384,40 +430,63 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
-                        {canShareFiles && (meta.isVideo || meta.isImage) && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleShareOrSave(url, meta, i)}
-                            disabled={sharingIndex === i}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 h-auto rounded-lg border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary transition-all cursor-pointer"
-                            title={isAr ? "حفظ في ألبوم الصور / مشاركة" : "Save to Photos / Share"}
-                          >
-                            {sharingIndex === i ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : (
-                              <Share2 size={13} />
-                            )}
-                            <span>{isAr ? "حفظ في الاستوديو" : "Save to Photos"}</span>
-                          </Button>
-                        )}
-
                         {meta.isDrive ? (
                           <a
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
                           >
                             <ExternalLink size={13} />
                             <span>{isAr ? "فتح الرابط" : "Open Link"}</span>
+                          </a>
+                        ) : deviceType === "ios" ? (
+                          meta.isVideo || meta.isImage ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => handleShareOrSave(url, meta, i)}
+                              disabled={sharingIndex === i}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 h-auto rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shadow-sm disabled:opacity-75"
+                              title={isAr ? "تحميل وحفظ في ألبوم الصور (Photos)" : "Download and save to Photos"}
+                            >
+                              {sharingIndex === i ? (
+                                <>
+                                  <Loader2 size={13} className="animate-spin" />
+                                  <span>{isAr ? "جارِ التجهيز..." : "Preparing..."}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AppleIcon className="w-3.5 h-3.5 fill-current" />
+                                  <span>{isAr ? "تحميل للآيفون" : "Download for iPhone"}</span>
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <a
+                              href={downloadUrl}
+                              download={meta.name}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                            >
+                              <Download size={13} />
+                              <span>{isAr ? `تحميل الملف (${meta.ext})` : `Download (${meta.ext})`}</span>
+                            </a>
+                          )
+                        ) : deviceType === "android" ? (
+                          <a
+                            href={downloadUrl}
+                            download={meta.name}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                            title={isAr ? "تحميل وحفظ في الاستوديو للأندرويد" : "Download to Android Gallery"}
+                          >
+                            <AndroidIcon className="w-3.5 h-3.5 fill-current" />
+                            <span>{isAr ? "تحميل للأندرويد" : "Download for Android"}</span>
                           </a>
                         ) : (
                           <a
                             href={downloadUrl}
                             download={meta.name}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
                           >
                             <Download size={13} />
                             <span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span>
@@ -432,19 +501,40 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
               <div className="mt-3 rounded-xl border border-border/60 bg-muted/20 p-3.5 text-xs text-muted-foreground flex items-start gap-2.5">
                 <Info size={16} className="text-primary flex-shrink-0 mt-0.5" />
                 <div className="space-y-1 leading-relaxed">
-                  <p className="font-semibold text-foreground">
-                    {isAr ? "💡 معلومة لمستخدمي الهاتف والآيفون:" : "💡 Tip for Mobile & iPhone users:"}
-                  </p>
-                  <p>
-                    {isAr
-                      ? "• على أجهزة iPhone: زر «حفظ في الاستوديو» يتيح لك حفظ الفيديو مباشرة في ألبوم الصور (Photos). أو اضغط «تحميل» للتحميل في تطبيق «الملفات»، ثم افتح الملف واضغط (مشاركة ➔ حفظ الفيديو)."
-                      : "• On iPhone: Tap «Save to Photos» to save directly to your Camera Roll. Or tap «Download» to save to the «Files» app, then open it and select (Share ➔ Save Video)."}
-                  </p>
-                  <p>
-                    {isAr
-                      ? "• على أجهزة Android: الملفات المحمّلة تُحفظ في مجلد «التنزيلات» (Downloads)، وتجدها في تطبيق الاستوديو داخل تبويب «الألبومات ➔ التنزيلات»."
-                      : "• On Android: Downloaded files are saved to «Downloads» and appear in your Gallery under «Albums ➔ Downloads»."}
-                  </p>
+                  {deviceType === "ios" ? (
+                    <>
+                      <p className="font-semibold text-foreground">
+                        {isAr ? "💡 معلومة لمستخدمي الآيفون (iOS):" : "💡 Tip for iPhone (iOS) users:"}
+                      </p>
+                      <p>
+                        {isAr
+                          ? "• اضغط «تحميل للآيفون»، ثم اختر «حفظ الفيديو» (Save Video) من نافذة المشاركة ليتم حفظه مباشرة في ألبوم الصور (Photos)."
+                          : "• Tap «Download for iPhone», then select «Save Video» from the share sheet to save directly into your Photos app."}
+                      </p>
+                    </>
+                  ) : deviceType === "android" ? (
+                    <>
+                      <p className="font-semibold text-foreground">
+                        {isAr ? "💡 معلومة لمستخدمي الأندرويد (Android):" : "💡 Tip for Android users:"}
+                      </p>
+                      <p>
+                        {isAr
+                          ? "• اضغط «تحميل للأندرويد»، وسيتم حفظ الفيديو تلقائياً في مجلد التنزيلات وتجده داخل تطبيق الاستوديو (معرض الصور)."
+                          : "• Tap «Download for Android», the video will be saved to your Downloads folder and will appear in your Gallery app."}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold text-foreground">
+                        {isAr ? "💡 معلومة لمستخدمي الهاتف والكمبيوتر:" : "💡 Download Tip:"}
+                      </p>
+                      <p>
+                        {isAr
+                          ? "• على الآيفون: اضغط «تحميل للآيفون» لحفظه في ألبوم الصور. على الأندرويد والكمبيوتر: يتم حفظ الملف مباشرة في مجلد التنزيلات."
+                          : "• On iPhone: Tap «Download for iPhone» to save to Photos. On Android and PC: Files are saved to your Downloads folder."}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
