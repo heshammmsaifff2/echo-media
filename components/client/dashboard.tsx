@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadToCloudinary } from "@/lib/upload";
 import { useI18n } from "@/lib/i18n";
@@ -15,7 +15,7 @@ import Image from "next/image";
 import {
   Lock, Unlock, Loader2, Check, Download, ExternalLink, FileText, CreditCard,
   Clock, Timer, AlertTriangle, Eye, Trash2, FileVideo, FileArchive, FileImage,
-  Receipt, Banknote, Plus, Share2, Info,
+  Receipt, Banknote, Plus, Share2, Info, X, CheckCircle2, Smartphone,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Payment, confirmedTotal, remainingBalance, isFullyPaid } from "@/lib/payments";
@@ -159,6 +159,28 @@ function useDeviceType(): DeviceType {
   return deviceType;
 }
 
+function formatFileSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return "0 MB";
+  const mb = bytes / (1024 * 1024);
+  if (mb < 0.1) {
+    const kb = bytes / 1024;
+    return `${kb.toFixed(0)} KB`;
+  }
+  return `${mb.toFixed(1)} MB`;
+}
+
+type DownloadState = {
+  index: number;
+  name: string;
+  loaded: number;
+  total: number;
+  percent: number | null;
+  status: "starting" | "downloading" | "processing" | "ready_to_save" | "error";
+  error?: string;
+  file?: File;
+  directUrl?: string;
+};
+
 function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const router = useRouter();
   const deviceType = useDeviceType();
@@ -168,35 +190,182 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [receiptView, setReceiptView] = useState<string | null>(null);
-  const [sharingIndex, setSharingIndex] = useState<number | null>(null);
+  const [downloadState, setDownloadState] = useState<DownloadState | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleShareOrSave = async (url: string, meta: ReturnType<typeof getDeliveryFileMeta>, index: number) => {
-    setSharingIndex(index);
-    const directUrl = getDirectDownloadUrl(url);
+  const cancelDownload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setDownloadState(null);
+  };
+
+  const triggerSaveToPhotos = async () => {
+    if (!downloadState?.file) return;
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch file");
-        const blob = await res.blob();
-        const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
-        const mime = blob.type || (meta.isVideo ? `video/${ext}` : meta.isImage ? `image/${ext}` : "application/octet-stream");
-        const file = new File([blob], meta.name, { type: mime });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        if (navigator.canShare && navigator.canShare({ files: [downloadState.file] })) {
           await navigator.share({
-            files: [file],
-            title: meta.name,
+            files: [downloadState.file],
+            title: downloadState.name,
           });
+          setDownloadState(null);
           return;
-        } else {
+        } else if (downloadState.directUrl) {
           await navigator.share({
-            title: meta.name,
-            url: directUrl,
+            title: downloadState.name,
+            url: downloadState.directUrl,
+          });
+          setDownloadState(null);
+          return;
+        }
+      }
+      if (downloadState.directUrl) {
+        const a = document.createElement("a");
+        a.href = downloadState.directUrl;
+        a.download = downloadState.name;
+        a.target = "_blank";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      setDownloadState(null);
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
+        setDownloadState(null);
+        return;
+      }
+      console.error("Save error:", err);
+      setDownloadState(null);
+    }
+  };
+
+  const handleShareOrSave = async (url: string, meta: ReturnType<typeof getDeliveryFileMeta>, index: number) => {
+    if (downloadState) return;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const directUrl = getDirectDownloadUrl(url);
+
+    setDownloadState({
+      index,
+      name: meta.name,
+      loaded: 0,
+      total: 0,
+      percent: 0,
+      status: "starting",
+      directUrl,
+    });
+
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) throw new Error(isAr ? `فشل تحميل الملف (رمز الخطأ ${res.status})` : `Failed to fetch file (${res.status})`);
+
+      const contentLength = res.headers.get("content-length");
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      let loaded = 0;
+      let blob: Blob;
+
+      if (res.body && typeof res.body.getReader === "function") {
+        const reader = res.body.getReader();
+        const chunks: BlobPart[] = [];
+        let lastUpdate = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            loaded += value.length;
+
+            const now = Date.now();
+            if (now - lastUpdate > 80 || (total > 0 && loaded >= total)) {
+              lastUpdate = now;
+              const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
+              setDownloadState({
+                index,
+                name: meta.name,
+                loaded,
+                total,
+                percent,
+                status: "downloading",
+                directUrl,
+              });
+            }
+          }
+        }
+
+        const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
+        const defaultMime = meta.isVideo
+          ? (ext === "mov" ? "video/quicktime" : "video/mp4")
+          : meta.isImage
+            ? `image/${ext}`
+            : "application/octet-stream";
+        const mime = res.headers.get("content-type") || defaultMime;
+        blob = new Blob(chunks, { type: mime });
+      } else {
+        blob = await res.blob();
+      }
+
+      setDownloadState({
+        index,
+        name: meta.name,
+        loaded: total > 0 ? total : loaded,
+        total: total > 0 ? total : loaded,
+        percent: 100,
+        status: "processing",
+        directUrl,
+      });
+
+      const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
+      const mime =
+        blob.type ||
+        (meta.isVideo
+          ? (ext === "mov" ? "video/quicktime" : "video/mp4")
+          : meta.isImage
+            ? `image/${ext}`
+            : "application/octet-stream");
+      const file = new File([blob], meta.name, { type: mime });
+
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: meta.name,
+            });
+            setDownloadState(null);
+            return;
+          } else {
+            await navigator.share({
+              title: meta.name,
+              url: directUrl,
+            });
+            setDownloadState(null);
+            return;
+          }
+        } catch (shareErr) {
+          if ((shareErr as Error)?.name === "AbortError") {
+            setDownloadState(null);
+            return;
+          }
+          // If Safari blocked auto-share due to expired transient activation, prompt user to tap
+          setDownloadState({
+            index,
+            name: meta.name,
+            loaded: total > 0 ? total : loaded,
+            total: total > 0 ? total : loaded,
+            percent: 100,
+            status: "ready_to_save",
+            file,
+            directUrl,
           });
           return;
         }
       }
-      // If Web Share API is not available on this browser, trigger direct download:
+
+      // If Web Share API is not available:
       const a = document.createElement("a");
       a.href = directUrl;
       a.download = meta.name;
@@ -204,20 +373,25 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setDownloadState(null);
     } catch (err: unknown) {
-      if ((err as Error)?.name !== "AbortError") {
-        console.error("Download/Share error:", err);
-        // Fallback: trigger direct download/open in new tab
-        const a = document.createElement("a");
-        a.href = directUrl;
-        a.download = meta.name;
-        a.target = "_blank";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+      if ((err as Error)?.name === "AbortError") {
+        setDownloadState(null);
+        return;
       }
+      console.error("Download/Share error:", err);
+      setDownloadState({
+        index,
+        name: meta.name,
+        loaded: 0,
+        total: 0,
+        percent: null,
+        status: "error",
+        error: (err as Error)?.message || (isAr ? "فشل التحميل" : "Download failed"),
+        directUrl,
+      });
     } finally {
-      setSharingIndex(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -415,53 +589,97 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                   const meta = getDeliveryFileMeta(url, isAr);
                   const downloadUrl = getDirectDownloadUrl(url);
                   return (
-                    <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3.5 hover:border-primary/40 hover:bg-muted/20 transition-all group shadow-sm">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.isVideo ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" : meta.isZip ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : meta.isDrive ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : meta.isImage ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-primary/10 text-primary border border-primary/20"}`}>
-                          {meta.isVideo ? <FileVideo size={20} /> : meta.isZip ? <FileArchive size={20} /> : meta.isDrive ? <ExternalLink size={20} /> : meta.isImage ? <FileImage size={20} /> : <Download size={20} />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors text-foreground" title={meta.name}>{meta.name}</p>
-                            <Badge variant="outline" className="text-[10px] font-mono uppercase px-1.5 py-0 h-4 border-muted-foreground/30 text-muted-foreground">{meta.ext}</Badge>
+                    <div key={i} className="rounded-xl border border-border/60 bg-card p-3.5 hover:border-primary/40 transition-all shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.isVideo ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" : meta.isZip ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : meta.isDrive ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : meta.isImage ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-primary/10 text-primary border border-primary/20"}`}>
+                            {meta.isVideo ? <FileVideo size={20} /> : meta.isZip ? <FileArchive size={20} /> : meta.isDrive ? <ExternalLink size={20} /> : meta.isImage ? <FileImage size={20} /> : <Download size={20} />}
                           </div>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{meta.label}</p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold truncate text-foreground" title={meta.name}>{meta.name}</p>
+                              <Badge variant="outline" className="text-[10px] font-mono uppercase px-1.5 py-0 h-4 border-muted-foreground/30 text-muted-foreground">{meta.ext}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{meta.label}</p>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
-                        {meta.isDrive ? (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
-                          >
-                            <ExternalLink size={13} />
-                            <span>{isAr ? "فتح الرابط" : "Open Link"}</span>
-                          </a>
-                        ) : deviceType === "ios" ? (
-                          meta.isVideo || meta.isImage ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => handleShareOrSave(url, meta, i)}
-                              disabled={sharingIndex === i}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 h-auto rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shadow-sm disabled:opacity-75"
-                              title={isAr ? "تحميل وحفظ في ألبوم الصور (Photos)" : "Download and save to Photos"}
+                        <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
+                          {meta.isDrive ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
                             >
-                              {sharingIndex === i ? (
-                                <>
-                                  <Loader2 size={13} className="animate-spin" />
-                                  <span>{isAr ? "جارِ التجهيز..." : "Preparing..."}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <AppleIcon className="w-3.5 h-3.5 fill-current" />
-                                  <span>{isAr ? "تحميل للآيفون" : "Download for iPhone"}</span>
-                                </>
-                              )}
-                            </Button>
+                              <ExternalLink size={13} />
+                              <span>{isAr ? "فتح الرابط" : "Open Link"}</span>
+                            </a>
+                          ) : deviceType === "ios" ? (
+                            meta.isVideo || meta.isImage ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => {
+                                  if (downloadState?.index === i && downloadState.status === "ready_to_save") {
+                                    triggerSaveToPhotos();
+                                  } else {
+                                    handleShareOrSave(url, meta, i);
+                                  }
+                                }}
+                                disabled={downloadState !== null && downloadState.index !== i}
+                                className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 h-auto rounded-lg transition-all cursor-pointer shadow-sm ${
+                                  downloadState?.index === i && downloadState.status === "ready_to_save"
+                                    ? "bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse"
+                                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                                } disabled:opacity-60`}
+                                title={isAr ? "تحميل وحفظ في ألبوم الصور (Photos)" : "Download and save to Photos"}
+                              >
+                                {downloadState?.index === i ? (
+                                  downloadState.status === "ready_to_save" ? (
+                                    <>
+                                      <Smartphone size={13} />
+                                      <span>{isAr ? "احفظ في الصور" : "Save to Photos"}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Loader2 size={13} className="animate-spin" />
+                                      <span>
+                                        {downloadState.status === "processing"
+                                          ? (isAr ? "جارِ التجهيز..." : "Preparing...")
+                                          : downloadState.percent !== null
+                                            ? `${downloadState.percent}%`
+                                            : (isAr ? "جارِ التحميل..." : "Downloading...")}
+                                      </span>
+                                    </>
+                                  )
+                                ) : (
+                                  <>
+                                    <AppleIcon className="w-3.5 h-3.5 fill-current" />
+                                    <span>{isAr ? "تحميل للآيفون" : "Download for iPhone"}</span>
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <a
+                                href={downloadUrl}
+                                download={meta.name}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                              >
+                                <Download size={13} />
+                                <span>{isAr ? `تحميل الملف (${meta.ext})` : `Download (${meta.ext})`}</span>
+                              </a>
+                            )
+                          ) : deviceType === "android" ? (
+                            <a
+                              href={downloadUrl}
+                              download={meta.name}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                              title={isAr ? "تحميل وحفظ في الاستوديو للأندرويد" : "Download to Android Gallery"}
+                            >
+                              <AndroidIcon className="w-3.5 h-3.5 fill-current" />
+                              <span>{isAr ? "تحميل للأندرويد" : "Download for Android"}</span>
+                            </a>
                           ) : (
                             <a
                               href={downloadUrl}
@@ -469,30 +687,127 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
                             >
                               <Download size={13} />
-                              <span>{isAr ? `تحميل الملف (${meta.ext})` : `Download (${meta.ext})`}</span>
+                              <span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span>
                             </a>
-                          )
-                        ) : deviceType === "android" ? (
-                          <a
-                            href={downloadUrl}
-                            download={meta.name}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
-                            title={isAr ? "تحميل وحفظ في الاستوديو للأندرويد" : "Download to Android Gallery"}
-                          >
-                            <AndroidIcon className="w-3.5 h-3.5 fill-current" />
-                            <span>{isAr ? "تحميل للأندرويد" : "Download for Android"}</span>
-                          </a>
-                        ) : (
-                          <a
-                            href={downloadUrl}
-                            download={meta.name}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
-                          >
-                            <Download size={13} />
-                            <span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span>
-                          </a>
-                        )}
+                          )}
+                        </div>
                       </div>
+
+                      {/* Inline Progress Bar for iOS & active downloads */}
+                      {downloadState && downloadState.index === i && (
+                        <div className="mt-3.5 pt-3.5 border-t border-border/60 space-y-2.5 animate-in fade-in-50 duration-200">
+                          <div className="flex items-center justify-between text-xs gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-2 h-2 rounded-full ${
+                                downloadState.status === "ready_to_save"
+                                  ? "bg-emerald-500"
+                                  : downloadState.status === "error"
+                                    ? "bg-red-500"
+                                    : "bg-primary animate-ping"
+                              }`} />
+                              <span className="font-semibold text-foreground truncate">
+                                {downloadState.status === "starting"
+                                  ? (isAr ? "جارِ بدء الاتصال..." : "Connecting...")
+                                  : downloadState.status === "downloading"
+                                    ? (isAr ? "جاري تحميل الفيديو إلى جهازك..." : "Downloading video to your device...")
+                                    : downloadState.status === "processing"
+                                      ? (isAr ? "تم التحميل! جارِ تجهيز الملف..." : "Downloaded! Preparing file...")
+                                      : downloadState.status === "ready_to_save"
+                                        ? (isAr ? "اكتمل التحميل بنجاح (100%)!" : "Download complete (100%)!")
+                                        : (isAr ? "حدث خطأ أثناء التحميل" : "Download error")}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0 font-mono text-[11px]">
+                              {downloadState.percent !== null && (
+                                <span className={`font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                                  downloadState.status === "ready_to_save"
+                                    ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/30"
+                                    : "bg-primary/10 text-primary border border-primary/20"
+                                }`}>
+                                  {downloadState.percent}%
+                                </span>
+                              )}
+                              <span className="text-muted-foreground">
+                                {formatFileSize(downloadState.loaded)}
+                                {downloadState.total > 0 && ` / ${formatFileSize(downloadState.total)}`}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Progress track */}
+                          {downloadState.status !== "error" && (
+                            <div className="relative w-full h-2.5 bg-muted rounded-full overflow-hidden p-0.5 border border-border/40">
+                              <div
+                                className={`h-full rounded-full transition-all duration-150 ${
+                                  downloadState.status === "ready_to_save" || downloadState.status === "processing"
+                                    ? "bg-emerald-500"
+                                    : "bg-gradient-to-r from-primary/80 via-primary to-primary shadow-sm"
+                                }`}
+                                style={{
+                                  width: downloadState.percent !== null ? `${downloadState.percent}%` : "100%",
+                                  transition: "width 0.15s ease-out",
+                                }}
+                              />
+                            </div>
+                          )}
+
+                          {/* Footer Action & Guidance */}
+                          {downloadState.status === "ready_to_save" ? (
+                            <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                {isAr
+                                  ? "✓ اضغط الزر أدناه لحفظ الفيديو مباشرة في ألبوم الصور (Photos)."
+                                  : "✓ Tap the button below to save video directly to Photos."}
+                              </p>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={triggerSaveToPhotos}
+                                className="h-8 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-sm"
+                              >
+                                <Smartphone size={13} />
+                                <span>{isAr ? "حفظ في ألبوم الصور" : "Save to Photos"}</span>
+                              </Button>
+                            </div>
+                          ) : downloadState.status === "error" ? (
+                            <div className="flex items-center justify-between text-xs pt-1">
+                              <span className="text-red-500 text-[11px]">{downloadState.error}</span>
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={downloadState.directUrl}
+                                  target="_blank"
+                                  download={downloadState.name}
+                                  className="text-xs font-semibold text-primary underline"
+                                >
+                                  {isAr ? "رابط بديل مباشر" : "Direct Link"}
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => setDownloadState(null)}
+                                  className="text-xs text-muted-foreground hover:text-foreground underline cursor-pointer"
+                                >
+                                  {isAr ? "إغلاق" : "Close"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-2 pt-1 text-[11px]">
+                              <p className="text-muted-foreground">
+                                {isAr
+                                  ? "⏳ يرجى إبقاء هذه الصفحة مفتوحة حتى يكتمل التحميل وتظهر نافذة الحفظ."
+                                  : "⏳ Keep this page open until download finishes and save menu appears."}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={cancelDownload}
+                                className="text-muted-foreground hover:text-red-500 transition-colors text-[11px] underline flex-shrink-0 cursor-pointer"
+                              >
+                                {isAr ? "إلغاء التحميل" : "Cancel"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -508,8 +823,8 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                       </p>
                       <p>
                         {isAr
-                          ? "• اضغط «تحميل للآيفون»، ثم اختر «حفظ الفيديو» (Save Video) من نافذة المشاركة ليتم حفظه مباشرة في ألبوم الصور (Photos)."
-                          : "• Tap «Download for iPhone», then select «Save Video» from the share sheet to save directly into your Photos app."}
+                          ? "• اضغط «تحميل للآيفون»، سيظهر لك مؤشر تقدم التحميل بالنسبة المئوية (%)، ثم اختر «حفظ الفيديو» (Save Video) من نافذة المشاركة ليتم حفظه مباشرة في ألبوم الصور (Photos)."
+                          : "• Tap «Download for iPhone», you will see a live progress indicator (%), then select «Save Video» from the share sheet to save directly into your Photos app."}
                       </p>
                     </>
                   ) : deviceType === "android" ? (
@@ -543,6 +858,133 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
           )}
         </div>
       </CardContent>
+
+      {/* Floating Bottom Progress Indicator for Mobile/iPhone */}
+      {downloadState && (
+        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-50 animate-in slide-in-from-bottom-5 duration-300">
+          <div className={`rounded-2xl border p-4 shadow-2xl backdrop-blur-md transition-all ${
+            downloadState.status === "ready_to_save"
+              ? "border-emerald-500/50 bg-card/95 text-foreground ring-2 ring-emerald-500/20"
+              : downloadState.status === "error"
+                ? "border-red-500/40 bg-card/95 text-foreground"
+                : "border-primary/40 bg-card/95 text-foreground"
+          }`}>
+            <div className="flex items-start justify-between gap-3 mb-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 border ${
+                  downloadState.status === "ready_to_save"
+                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    : downloadState.status === "error"
+                      ? "bg-red-500/10 text-red-500 border-red-500/20"
+                      : "bg-primary/10 text-primary border-primary/20"
+                }`}>
+                  {downloadState.status === "ready_to_save" ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 animate-in zoom-in" />
+                  ) : downloadState.status === "error" ? (
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                  ) : (
+                    <FileVideo className="w-5 h-5 text-primary animate-pulse" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate text-foreground" title={downloadState.name}>
+                    {downloadState.name}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground truncate">
+                    {downloadState.status === "starting"
+                      ? (isAr ? "جارِ بدء الاتصال..." : "Connecting...")
+                      : downloadState.status === "downloading"
+                        ? (isAr ? "جاري التحميل للآيفون..." : "Downloading to iPhone...")
+                        : downloadState.status === "processing"
+                          ? (isAr ? "جارِ تجهيز الفيديو..." : "Processing video...")
+                          : downloadState.status === "ready_to_save"
+                            ? (isAr ? "جاهز للحفظ في ألبوم الصور!" : "Ready to save to Photos!")
+                            : (isAr ? "حدث خطأ أثناء التحميل" : "Download failed")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                {downloadState.percent !== null && (
+                  <Badge
+                    variant="outline"
+                    className={`font-mono text-xs font-bold ${
+                      downloadState.status === "ready_to_save"
+                        ? "text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
+                        : "text-primary border-primary/30 bg-primary/10"
+                    }`}
+                  >
+                    {downloadState.percent}%
+                  </Badge>
+                )}
+                <button
+                  type="button"
+                  onClick={cancelDownload}
+                  className="w-6 h-6 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  title={isAr ? "إغلاق" : "Close"}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Progress track */}
+            {downloadState.status !== "error" && (
+              <div className="w-full bg-muted/70 rounded-full h-2 overflow-hidden mb-2 border border-border/30">
+                <div
+                  className={`h-full rounded-full transition-all duration-150 ${
+                    downloadState.status === "ready_to_save" || downloadState.status === "processing"
+                      ? "bg-emerald-500"
+                      : "bg-primary"
+                  }`}
+                  style={{ width: `${downloadState.percent ?? 100}%` }}
+                />
+              </div>
+            )}
+
+            {/* Footer action/info */}
+            {downloadState.status === "ready_to_save" ? (
+              <div className="mt-2.5 pt-2 border-t border-border/50">
+                <Button
+                  type="button"
+                  onClick={triggerSaveToPhotos}
+                  className="w-full h-9 text-xs font-bold gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-md cursor-pointer"
+                >
+                  <Smartphone size={14} />
+                  <span>{isAr ? "اضغط هنا لحفظ الفيديو في الصور (Photos)" : "Tap to Save Video to Photos"}</span>
+                </Button>
+                <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                  {isAr
+                    ? "اختر «حفظ الفيديو» (Save Video) من نافذة المشاركة"
+                    : "Select «Save Video» from the popup share sheet"}
+                </p>
+              </div>
+            ) : downloadState.status === "error" ? (
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-red-500 text-[11px]">{downloadState.error}</span>
+                <a
+                  href={downloadState.directUrl}
+                  target="_blank"
+                  download={downloadState.name}
+                  className="text-xs font-semibold text-primary underline"
+                >
+                  {isAr ? "تنزيل مباشر" : "Direct Download"}
+                </a>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
+                <span>
+                  {formatFileSize(downloadState.loaded)}
+                  {downloadState.total > 0 && ` / ${formatFileSize(downloadState.total)}`}
+                </span>
+                <span className="font-sans text-[10px] text-amber-500/90 font-medium">
+                  {isAr ? "⏳ لا تغلق الصفحة حتى يكتمل" : "⏳ Keep page open"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
