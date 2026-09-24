@@ -13,6 +13,7 @@ import { SplashScreen } from "@/components/splash-screen";
 import { ContentProvider } from "@/components/content-provider";
 import { getSectionMap } from "@/lib/content-server";
 import { getSiteContact } from "@/lib/settings-server";
+import { AuthRecoveryHandler } from "@/components/auth-recovery-handler";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -79,6 +80,7 @@ export default async function SiteLayout({
         suppressHydrationWarning
       >
         <SplashScreen />
+        <AuthRecoveryHandler />
         <I18nProvider locale={typed}>
           <ContentProvider value={sections}>
             <SmoothScroll />

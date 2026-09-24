@@ -21,22 +21,48 @@ export function UpdatePasswordForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { isAr } = useI18n();
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (password.length < 6) {
+      setError(
+        isAr
+          ? "كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+          : "Password must be at least 6 characters",
+      );
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError(
+        isAr
+          ? "كلمتا المرور غير متطابقتين"
+          : "Passwords do not match",
+      );
+      return;
+    }
+
     const supabase = createClient();
     setIsLoading(true);
-    setError(null);
 
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      window.location.href = "/dashboard";
+      window.location.href = "/auth/callback";
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : isAr ? "حدث خطأ" : "An error occurred");
+      setError(
+        error instanceof Error
+          ? error.message
+          : isAr
+            ? "حدث خطأ أثناء حفظ كلمة المرور"
+            : "An error occurred while saving password",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +95,19 @@ export function UpdatePasswordForm({
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  dir="ltr"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirm-password">
+                  {isAr ? "تأكيد كلمة المرور" : "Confirm new password"}
+                </Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   dir="ltr"
                 />
               </div>

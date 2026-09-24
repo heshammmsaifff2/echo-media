@@ -7,6 +7,7 @@ import { brand } from "@/lib/brand";
 import { PortalChrome } from "@/components/portal-chrome";
 import { SplashScreen } from "@/components/splash-screen";
 import { getSiteContact } from "@/lib/settings-server";
+import { AuthRecoveryHandler } from "@/components/auth-recovery-handler";
 import { cookies } from "next/headers";
 
 const inter = Inter({
@@ -56,6 +57,7 @@ export default async function PortalLayout({
         suppressHydrationWarning
       >
         <SplashScreen />
+        <AuthRecoveryHandler />
         <I18nProvider locale={locale}>
           <PortalChrome contact={contact}>{children}</PortalChrome>
         </I18nProvider>
