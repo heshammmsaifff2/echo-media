@@ -14,7 +14,20 @@ export function AuthRecoveryHandler() {
     // 1. Direct hash inspection (e.g. #access_token=...&type=recovery)
     const hash = window.location.hash;
     if (hash && hash.includes("type=recovery")) {
-      window.location.replace(`/auth/update-password${hash}`);
+      const params = new URLSearchParams(hash.replace(/^#/, ""));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const target = `/auth/update-password${hash}`;
+
+      if (access_token && refresh_token) {
+        const supabase = createClient();
+        supabase.auth.setSession({ access_token, refresh_token }).finally(() => {
+          window.location.replace(target);
+        });
+        return;
+      }
+
+      window.location.replace(target);
       return;
     }
 
@@ -29,9 +42,15 @@ export function AuthRecoveryHandler() {
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        window.location.replace("/auth/update-password");
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && window.location.hash.includes("recovery"))) {
+        if (session) {
+          supabase.auth.setSession(session).finally(() => {
+            window.location.replace("/auth/update-password");
+          });
+        } else {
+          window.location.replace("/auth/update-password");
+        }
       }
     });
 
