@@ -15,10 +15,22 @@ import Image from "next/image";
 import {
   Lock, Unlock, Loader2, Check, Download, ExternalLink, FileText, CreditCard,
   Clock, Timer, AlertTriangle, Eye, Trash2, FileVideo, FileArchive, FileImage,
-  Receipt, Banknote, Plus,
+  Receipt, Banknote, Plus, Share2, Info,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Payment, confirmedTotal, remainingBalance, isFullyPaid } from "@/lib/payments";
+
+function getDirectDownloadUrl(url: string) {
+  if (!url) return url;
+  if (url.includes("drive.google.com") || url.includes("docs.google.com")) {
+    return url;
+  }
+  if (url.includes("res.cloudinary.com") && url.includes("/upload/")) {
+    if (url.includes("/fl_attachment")) return url;
+    return url.replace("/upload/", "/upload/fl_attachment/");
+  }
+  return url;
+}
 
 function getDeliveryFileMeta(url: string, isAr: boolean) {
   try {
@@ -116,6 +128,52 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const [amount, setAmount] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [receiptView, setReceiptView] = useState<string | null>(null);
+  const [sharingIndex, setSharingIndex] = useState<number | null>(null);
+  const [canShareFiles, setCanShareFiles] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function" && typeof navigator.canShare === "function") {
+      try {
+        const testFile = new File(["test"], "test.txt", { type: "text/plain" });
+        if (navigator.canShare({ files: [testFile] })) {
+          setCanShareFiles(true);
+        }
+      } catch {
+        setCanShareFiles(false);
+      }
+    }
+  }, []);
+
+  const handleShareOrSave = async (url: string, meta: ReturnType<typeof getDeliveryFileMeta>, index: number) => {
+    if (typeof navigator === "undefined" || !navigator.share) return;
+    setSharingIndex(index);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch file");
+      const blob = await res.blob();
+      const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
+      const mime = blob.type || (meta.isVideo ? `video/${ext}` : meta.isImage ? `image/${ext}` : "application/octet-stream");
+      const file = new File([blob], meta.name, { type: mime });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: meta.name,
+        });
+      } else {
+        await navigator.share({
+          title: meta.name,
+          url: getDirectDownloadUrl(url),
+        });
+      }
+    } catch (err: unknown) {
+      if ((err as Error)?.name !== "AbortError") {
+        console.error("Share error:", err);
+      }
+    } finally {
+      setSharingIndex(null);
+    }
+  };
 
   const payments = order.order_payments || [];
   const paid = confirmedTotal(payments);
@@ -309,8 +367,9 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
               <div className="grid gap-2.5">
                 {order.delivery_files.map((url, i) => {
                   const meta = getDeliveryFileMeta(url, isAr);
+                  const downloadUrl = getDirectDownloadUrl(url);
                   return (
-                    <div key={i} className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3.5 hover:border-primary/40 hover:bg-muted/20 transition-all group shadow-sm">
+                    <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3.5 hover:border-primary/40 hover:bg-muted/20 transition-all group shadow-sm">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.isVideo ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" : meta.isZip ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : meta.isDrive ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : meta.isImage ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-primary/10 text-primary border border-primary/20"}`}>
                           {meta.isVideo ? <FileVideo size={20} /> : meta.isZip ? <FileArchive size={20} /> : meta.isDrive ? <ExternalLink size={20} /> : meta.isImage ? <FileImage size={20} /> : <Download size={20} />}
@@ -323,12 +382,70 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                           <p className="text-xs text-muted-foreground truncate mt-0.5">{meta.label}</p>
                         </div>
                       </div>
-                      <a href={url} target="_blank" rel="noopener noreferrer" download={!meta.isDrive} className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer">
-                        {meta.isDrive ? (<><ExternalLink size={13} /><span>{isAr ? "فتح الرابط" : "Open Link"}</span></>) : (<><Download size={13} /><span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span></>)}
-                      </a>
+
+                      <div className="flex items-center gap-2 flex-wrap self-end sm:self-center">
+                        {canShareFiles && (meta.isVideo || meta.isImage) && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleShareOrSave(url, meta, i)}
+                            disabled={sharingIndex === i}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 h-auto rounded-lg border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary transition-all cursor-pointer"
+                            title={isAr ? "حفظ في ألبوم الصور / مشاركة" : "Save to Photos / Share"}
+                          >
+                            {sharingIndex === i ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <Share2 size={13} />
+                            )}
+                            <span>{isAr ? "حفظ في الاستوديو" : "Save to Photos"}</span>
+                          </Button>
+                        )}
+
+                        {meta.isDrive ? (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                          >
+                            <ExternalLink size={13} />
+                            <span>{isAr ? "فتح الرابط" : "Open Link"}</span>
+                          </a>
+                        ) : (
+                          <a
+                            href={downloadUrl}
+                            download={meta.name}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                          >
+                            <Download size={13} />
+                            <span>{isAr ? `تحميل (${meta.ext})` : `Download (${meta.ext})`}</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="mt-3 rounded-xl border border-border/60 bg-muted/20 p-3.5 text-xs text-muted-foreground flex items-start gap-2.5">
+                <Info size={16} className="text-primary flex-shrink-0 mt-0.5" />
+                <div className="space-y-1 leading-relaxed">
+                  <p className="font-semibold text-foreground">
+                    {isAr ? "💡 معلومة لمستخدمي الهاتف والآيفون:" : "💡 Tip for Mobile & iPhone users:"}
+                  </p>
+                  <p>
+                    {isAr
+                      ? "• على أجهزة iPhone: زر «حفظ في الاستوديو» يتيح لك حفظ الفيديو مباشرة في ألبوم الصور (Photos). أو اضغط «تحميل» للتحميل في تطبيق «الملفات»، ثم افتح الملف واضغط (مشاركة ➔ حفظ الفيديو)."
+                      : "• On iPhone: Tap «Save to Photos» to save directly to your Camera Roll. Or tap «Download» to save to the «Files» app, then open it and select (Share ➔ Save Video)."}
+                  </p>
+                  <p>
+                    {isAr
+                      ? "• على أجهزة Android: الملفات المحمّلة تُحفظ في مجلد «التنزيلات» (Downloads)، وتجدها في تطبيق الاستوديو داخل تبويب «الألبومات ➔ التنزيلات»."
+                      : "• On Android: Downloaded files are saved to «Downloads» and appear in your Gallery under «Albums ➔ Downloads»."}
+                  </p>
+                </div>
               </div>
             </div>
           ) : (
