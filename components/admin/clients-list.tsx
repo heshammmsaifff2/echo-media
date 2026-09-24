@@ -33,7 +33,10 @@ export function ClientsList({ clients }: { clients: Client[] }) {
 
   const [resetFor, setResetFor] = useState<Client | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [resetSuccess, setResetSuccess] = useState<{ username: string; password: string } | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [resetCopied, setResetCopied] = useState(false);
 
   const genPassword = () =>
     Math.random().toString(36).slice(2, 6) + Math.random().toString(36).slice(2, 6);
@@ -64,7 +67,12 @@ export function ClientsList({ clients }: { clients: Client[] }) {
   };
 
   const handleReset = async () => {
-    if (!resetFor || newPassword.length < 6) return;
+    if (!resetFor) return;
+    setResetError(null);
+    if (newPassword.length < 6) {
+      setResetError(t("Password must be at least 6 characters.", "كلمة المرور ٦ أحرف على الأقل."));
+      return;
+    }
     setLoading(true);
     try {
       const supabase = createClient();
@@ -73,11 +81,20 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         p_password: newPassword,
       });
       if (rpcError) throw rpcError;
-      alert(t("Password updated.", "تم تحديث كلمة المرور."));
-      setResetFor(null);
+
+      const clientUsername =
+        resetFor.username ||
+        resetFor.email?.replace(/@clients\.echo\.local$/, "") ||
+        resetFor.email;
+
+      setResetSuccess({
+        username: clientUsername,
+        password: newPassword,
+      });
       setNewPassword("");
+      router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : t("Failed", "فشل"));
+      setResetError(err instanceof Error ? err.message : t("Failed to update password", "فشل تحديث كلمة المرور"));
     } finally {
       setLoading(false);
     }
@@ -94,11 +111,30 @@ export function ClientsList({ clients }: { clients: Client[] }) {
       .catch(() => {});
   };
 
+  const copyResetCreds = () => {
+    if (!resetSuccess) return;
+    navigator.clipboard
+      ?.writeText(`${t("Username", "اسم المستخدم")}: ${resetSuccess.username}\n${t("Password", "كلمة المرور")}: ${resetSuccess.password}`)
+      .then(() => {
+        setResetCopied(true);
+        setTimeout(() => setResetCopied(false), 1500);
+      })
+      .catch(() => {});
+  };
+
   const closeCreate = () => {
     setCreateOpen(false);
     setCreated(null);
     setError(null);
     setForm({ full_name: "", username: "", password: "" });
+  };
+
+  const closeReset = () => {
+    setResetFor(null);
+    setResetSuccess(null);
+    setResetError(null);
+    setNewPassword("");
+    setResetCopied(false);
   };
 
   return (
@@ -189,7 +225,7 @@ export function ClientsList({ clients }: { clients: Client[] }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" onClick={() => { setResetFor(client); setNewPassword(""); }}>
+                  <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" onClick={() => { closeReset(); setResetFor(client); }}>
                     <KeyRound size={14} /> {t("Reset password", "كلمة المرور")}
                   </Button>
                   <span className="text-xs text-muted-foreground">
@@ -202,26 +238,70 @@ export function ClientsList({ clients }: { clients: Client[] }) {
         </div>
       )}
 
-      <Dialog open={!!resetFor} onOpenChange={(o) => !o && setResetFor(null)}>
+      <Dialog open={!!resetFor} onOpenChange={(o) => (!o ? closeReset() : null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("Reset password", "إعادة تعيين كلمة المرور")} — {resetFor?.username || resetFor?.full_name}</DialogTitle>
+            <DialogTitle>
+              {resetSuccess
+                ? t("Password updated", "تم تحديث كلمة المرور")
+                : `${t("Reset password", "إعادة تعيين كلمة المرور")} — ${resetFor?.username || resetFor?.full_name}`}
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label>{t("New password", "كلمة المرور الجديدة")}</Label>
+
+          {resetSuccess ? (
+            <div className="grid gap-4 py-2">
+              <div className="flex items-center gap-2 text-green-500">
+                <Check size={18} /> <span className="font-medium">{t("Password updated", "تم تحديث كلمة المرور")}</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  "Share these credentials with the client. Keep the password safe — it isn't stored in readable form.",
+                  "شارك هذه البيانات مع العميل. احتفظ بكلمة المرور — لا تُخزَّن بشكل يمكن قراءته لاحقاً."
+                )}
+              </p>
+              <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm font-mono">
+                <div>{t("Username", "اسم المستخدم")}: <span className="font-semibold">{resetSuccess.username}</span></div>
+                <div>{t("Password", "كلمة المرور")}: <span className="font-semibold">{resetSuccess.password}</span></div>
+              </div>
               <div className="flex gap-2">
-                <Input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} dir="ltr" />
-                <Button type="button" variant="outline" onClick={() => setNewPassword(genPassword())} className="cursor-pointer whitespace-nowrap">
-                  {t("Generate", "توليد")}
+                <Button variant="outline" onClick={copyResetCreds} className="gap-2 cursor-pointer">
+                  {resetCopied ? <Check size={15} /> : <Copy size={15} />} {resetCopied ? t("Copied", "تم النسخ") : t("Copy", "نسخ")}
                 </Button>
+                <Button onClick={closeReset} className="cursor-pointer">{t("Done", "تم")}</Button>
               </div>
             </div>
-            <Button onClick={handleReset} disabled={loading || newPassword.length < 6} className="cursor-pointer">
-              {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-              {t("Update password", "تحديث كلمة المرور")}
-            </Button>
-          </div>
+          ) : (
+            <div className="grid gap-4 py-2">
+              <div className="grid gap-2">
+                <Label>{t("New password", "كلمة المرور الجديدة")}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    dir="ltr"
+                    placeholder={t("Min 6 characters", "٦ أحرف على الأقل")}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setNewPassword(genPassword())}
+                    className="cursor-pointer whitespace-nowrap"
+                  >
+                    {t("Generate", "توليد")}
+                  </Button>
+                </div>
+              </div>
+              {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+              <Button
+                onClick={handleReset}
+                disabled={loading || newPassword.length < 6}
+                className="cursor-pointer"
+              >
+                {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                {t("Update password", "تحديث كلمة المرور")}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
