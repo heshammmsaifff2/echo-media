@@ -8,7 +8,6 @@ import { ShowreelSection, FilmSection } from "@/components/sections/showreel";
 import { FeaturedWork } from "@/components/sections/featured-work";
 import { ClientsSection } from "@/components/sections/process";
 import { GoalSection, CtaSection } from "@/components/sections/closing";
-import { FullPage } from "@/components/full-page";
 
 type Params = { params: Promise<{ locale: string }> };
 
@@ -39,17 +38,14 @@ export default async function Home({ params }: Params) {
         }}
       />
 
-      <FullPage>
-        <HeroSection />
-        <FilmSection />
-        <ShowreelSection />
-        <LogoMoment />
-        <ClientsSection />
-        <GoalSection />
-        <CtaSection />
-      </FullPage>
-
+      <HeroSection />
+      <FilmSection />
+      <ShowreelSection />
       <FeaturedWork items={featured || []} />
+      <LogoMoment />
+      <ClientsSection />
+      <GoalSection />
+      <CtaSection />
     </>
   );
 }

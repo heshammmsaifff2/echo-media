@@ -7,9 +7,8 @@ import {
   StaggerItem,
   LineReveal,
 } from "@/components/motion";
-import { MediaPanel, PanelTag } from "@/components/media-panel";
+import { MediaPanel } from "@/components/media-panel";
 import { useSection } from "@/components/content-provider";
-import { FullPage } from "@/components/full-page";
 import { CtaSection } from "@/components/sections/closing";
 
 type Item = { title: string; body: string };
@@ -38,7 +37,7 @@ export function MahmoudContent() {
   })();
 
   return (
-    <FullPage>
+    <>
       {/* Founder hero — full-bleed media with the name and quote laid over it. */}
       <MediaPanel
         bg={heroS.bg}
@@ -64,38 +63,39 @@ export function MahmoudContent() {
         </blockquote>
       </MediaPanel>
 
-      {/* Where he works — a bold numbered stack, no grid. */}
-      <MediaPanel
-        bg={focusS.bg}
-        label={pick(focusS.field("heading", founder.focus.heading))}
-        overlay="strong"
-        align="center"
-        minH="screen"
-      >
-        <PanelTag>{pick(focusS.field("heading", founder.focus.heading))}</PanelTag>
+      {/* Where he works — clean numbered stack on the dark base. */}
+      <section className="border-t border-border bg-background py-28 sm:py-36">
+        <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
+          <div className="mb-14 flex items-center gap-6">
+            <span className="eyebrow whitespace-nowrap">
+              {pick(focusS.field("heading", founder.focus.heading))}
+            </span>
+            <span className="rule" />
+          </div>
 
-        <StaggerContainer className="flex flex-col" staggerDelay={0.06}>
-          {items.map((item, i) => (
-            <StaggerItem key={i}>
-              <div className="flex flex-col gap-1 border-t border-white/15 py-4 sm:flex-row sm:items-baseline sm:gap-10">
-                <span className="font-mono text-xs text-[hsl(var(--echo-accent))] sm:w-14 sm:shrink-0">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div className="sm:flex-1">
-                  <h3 className="text-xl font-bold leading-tight text-bright drop-shadow-[0_2px_20px_rgba(0,0,0,0.6)] sm:text-3xl">
-                    {item.title}
-                  </h3>
-                  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-foreground/80 sm:text-base">
-                    {item.body}
-                  </p>
+          <StaggerContainer className="flex flex-col" staggerDelay={0.06}>
+            {items.map((item, i) => (
+              <StaggerItem key={i}>
+                <div className="flex flex-col gap-2 border-t border-border py-8 sm:flex-row sm:items-baseline sm:gap-10">
+                  <span className="font-mono text-sm text-[hsl(var(--echo-accent))] sm:w-14 sm:shrink-0">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="sm:flex-1">
+                    <h3 className="text-2xl font-bold leading-tight text-bright sm:text-4xl">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+                      {item.body}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-      </MediaPanel>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </div>
+      </section>
 
       <CtaSection />
-    </FullPage>
+    </>
   );
 }

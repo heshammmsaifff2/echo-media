@@ -25,29 +25,29 @@ const VERTEX = /* glsl */ `
     float dist = length(pos.xz);
 
     // Primary echo pulse travelling outward, plus a finer second harmonic.
-    float pulse   = sin(dist * 1.9 - uTime * 1.25) * 0.34;
-    float harmony = sin(dist * 4.6 - uTime * 2.05) * 0.09;
+    float pulse   = sin(dist * 1.9 - uTime * 1.25) * 0.52;
+    float harmony = sin(dist * 4.6 - uTime * 2.05) * 0.16;
 
-    // A softer ripple that follows the cursor and decays with distance.
+    // A ripple that follows the cursor and decays with distance.
     vec2  pointer = uPointer * 7.0;
     float pDist   = length(pos.xz - pointer);
-    float pRipple = sin(pDist * 2.6 - uTime * 2.6) * 0.30 * exp(-pDist * 0.30);
+    float pRipple = sin(pDist * 2.6 - uTime * 2.6) * 0.55 * exp(-pDist * 0.28);
 
     float lift = (pulse + harmony + pRipple) * uIntensity;
     pos.y += lift;
 
     // Breathe the seed in so the grid never reads as a perfect lattice.
-    pos.y += sin(uTime * 0.5 + aSeed * 6.28) * 0.02;
+    pos.y += sin(uTime * 0.5 + aSeed * 6.28) * 0.03;
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
 
     // Crests glow; troughs recede.
-    vGlow = smoothstep(-0.15, 0.42, lift);
+    vGlow = smoothstep(-0.22, 0.5, lift);
     // Fade the far edge of the field into the background.
-    vFade = 1.0 - smoothstep(6.0, 15.0, dist);
+    vFade = 1.0 - smoothstep(11.0, 22.0, dist);
 
-    gl_PointSize = (2.4 + vGlow * 3.4) * (14.0 / -mv.z);
+    gl_PointSize = (3.4 + vGlow * 5.2) * (16.0 / -mv.z);
   }
 `;
 
@@ -68,7 +68,7 @@ const FRAGMENT = /* glsl */ `
     float alpha = smoothstep(0.5, 0.1, d);
 
     vec3 color = mix(uBase, uAccent, vGlow);
-    gl_FragColor = vec4(color, alpha * vFade * (0.18 + vGlow * 0.82));
+    gl_FragColor = vec4(color, alpha * vFade * (0.45 + vGlow * 0.55));
   }
 `;
 
@@ -77,7 +77,7 @@ function WaveField({ reduced }: { reduced: boolean }) {
   const pointer = useRef(new THREE.Vector2(0, 0));
 
   const { positions, seeds, count } = useMemo(() => {
-    const SIZE = 30; // grid resolution per axis
+    const SIZE = 48; // grid resolution per axis
     const SPREAD = 15;
     const total = SIZE * SIZE;
     const positions = new Float32Array(total * 3);
@@ -103,8 +103,8 @@ function WaveField({ reduced }: { reduced: boolean }) {
       uTime: { value: 0 },
       uPointer: { value: new THREE.Vector2(0, 0) },
       uIntensity: { value: 1 },
-      uBase: { value: new THREE.Color("#303030") },
-      uAccent: { value: new THREE.Color("#5b7cff") },
+      uBase: { value: new THREE.Color("#4a5488") },
+      uAccent: { value: new THREE.Color("#7d97ff") },
     }),
     []
   );

@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { useI18n } from "@/lib/i18n";
 import { style } from "@/lib/brand";
 import { LazyVideo } from "@/components/lazy-video";
-import { MediaPanel, PanelTag } from "@/components/media-panel";
 import { useSection } from "@/components/content-provider";
 import { Play, X } from "lucide-react";
 import {
@@ -127,39 +126,72 @@ export function ShowreelSection() {
   const { pick } = useI18n();
   const { bg, field } = useSection("home.style");
   const steps = pick(field("steps", style.steps));
+  const bandVideo = bg.type === "video" && bg.url ? bg.url : undefined;
+  const bandImage = bg.type === "image" && bg.url ? bg.url : undefined;
 
   return (
-    <MediaPanel bg={bg} label="Echo style" overlay="strong" align="center" minH="screen">
-      <PanelTag>{pick(field("label", style.label))}</PanelTag>
+    <section className="relative border-t border-border bg-background py-28 sm:py-36">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
+        <div className="mb-14 flex items-center gap-6">
+          <span className="eyebrow whitespace-nowrap">{pick(field("label", style.label))}</span>
+          <span className="rule" />
+        </div>
 
-      <h2 className="display-lg max-w-4xl text-bright drop-shadow-[0_2px_30px_rgba(0,0,0,0.6)]">
-        <LineRevealInView lines={[pick(field("heading", style.heading))]} />
-      </h2>
+        <h2 className="display-lg max-w-4xl text-bright">
+          <LineRevealInView lines={[pick(field("heading", style.heading))]} />
+        </h2>
 
-      <FadeIn delay={0.1}>
-        <p className="mt-8 max-w-xl text-lg text-foreground sm:text-xl">
-          {pick(field("body", style.body))}
-        </p>
-      </FadeIn>
+        <FadeIn delay={0.1}>
+          <p className="mt-8 max-w-xl text-lg text-muted-foreground">
+            {pick(field("body", style.body))}
+          </p>
+        </FadeIn>
+      </div>
 
-      {/* Oversized numbered line-up — flows and wraps, not a table. */}
-      <StaggerContainer
-        className="mt-16 flex flex-wrap items-baseline gap-x-10 gap-y-6"
-        staggerDelay={0.07}
-      >
-        {steps.map((step, i) => (
-          <StaggerItem key={i}>
-            <span className="group inline-flex items-baseline gap-3">
-              <span className="font-mono text-sm text-[hsl(var(--echo-accent))]">
-                {String(i + 1).padStart(2, "0")}
+      {/* Cinematic frame — aligned with the section, not edge-to-edge. */}
+      {(bandVideo || bandImage) && (
+        <div className="mx-auto mt-14 max-w-[1400px] px-6 sm:px-10">
+          <FadeIn direction="none">
+            <div className="relative overflow-hidden rounded-2xl border border-border">
+              {bandVideo ? (
+                <LazyVideo
+                  src={bandVideo}
+                  poster={bg.poster ?? undefined}
+                  mode="ambient"
+                  fit="contain"
+                  label="Echo showreel"
+                  className="aspect-video w-full"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={bandImage} alt="" className="aspect-video w-full object-cover" />
+              )}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
+            </div>
+          </FadeIn>
+        </div>
+      )}
+
+      {/* The six — clean oversized type, no boxes. */}
+      <div className="mx-auto mt-20 max-w-[1400px] px-6 sm:px-10">
+        <StaggerContainer
+          className="flex flex-wrap items-baseline gap-x-10 gap-y-6"
+          staggerDelay={0.06}
+        >
+          {steps.map((step, i) => (
+            <StaggerItem key={i}>
+              <span className="inline-flex items-baseline gap-3">
+                <span className="font-mono text-sm text-[hsl(var(--echo-accent))]">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="text-3xl font-bold leading-none text-bright sm:text-5xl">
+                  {step}
+                </span>
               </span>
-              <span className="text-3xl font-bold leading-none text-bright drop-shadow-[0_2px_20px_rgba(0,0,0,0.6)] sm:text-5xl">
-                {step}
-              </span>
-            </span>
-          </StaggerItem>
-        ))}
-      </StaggerContainer>
-    </MediaPanel>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </div>
+    </section>
   );
 }

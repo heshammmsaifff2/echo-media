@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { Pencil, Plus, Trash2, Loader2, ImageIcon, Film } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2, ImageIcon, Film, Type } from "lucide-react";
 
 type BiVal = { en: string; ar: string };
 type ListVal = { en: string[]; ar: string[] };
@@ -184,7 +184,9 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
                   <Card key={def.slug}>
                     <CardContent className="flex items-center gap-4 py-3">
                       <div className="w-20 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative grid place-items-center">
-                        {preview ? (
+                        {!def.media ? (
+                          <Type size={18} className="text-muted-foreground" />
+                        ) : preview ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={preview} alt="" className="w-full h-full object-cover" />
                         ) : type === "video" ? (
@@ -198,7 +200,9 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
                           {isAr ? def.label.ar : def.label.en}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {type} · {url || t("no media", "بدون وسائط")}
+                          {def.media
+                            ? `${type} · ${url || t("no media", "بدون وسائط")}`
+                            : t("Text only — no background", "نص فقط — بدون خلفية")}
                         </p>
                       </div>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(def)} className="cursor-pointer">
@@ -223,8 +227,9 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
 
           {editing && (
             <div className="grid gap-6 py-2">
-              {/* Background media */}
-              <div className="grid gap-3 rounded-lg border border-border/60 p-4">
+              {/* Background media — only for sections that render one. */}
+              {editing.media && (
+                <div className="grid gap-3 rounded-lg border border-border/60 p-4">
                 <Label className="text-sm font-semibold">
                   {t("Background", "الخلفية")}
                 </Label>
@@ -307,7 +312,8 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
                     )}
                   </>
                 )}
-              </div>
+                </div>
+              )}
 
               {/* Text fields */}
               {editing.fields.map((f) => (

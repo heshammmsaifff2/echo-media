@@ -88,7 +88,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "home.hero",
     page: "home",
     label: L("Hero", "الواجهة"),
-    media: true,
+    media: false,
     defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final.jpg" },
     fields: [
       { id: "eyebrow", label: L("Eyebrow", "سطر علوي"), type: "bi", def: hero.eyebrow },
@@ -126,7 +126,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "home.logo",
     page: "home",
     label: L("Logo moment", "لحظة اللوجو"),
-    media: true,
+    media: false,
     defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid1.jpg", poster: null },
     fields: [
       { id: "motto", label: L("Motto", "الشعار"), type: "bi", def: L(brand.motto, brand.motto) },
@@ -137,7 +137,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "home.clients",
     page: "home",
     label: L("Who we work with", "مع من نعمل"),
-    media: true,
+    media: false,
     defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/vid2-a6-9.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid2.jpg" },
     fields: [
       { id: "label", label: L("Label", "التصنيف"), type: "bi", def: clients.label },
@@ -150,7 +150,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "home.goal",
     page: "home",
     label: L("2030 goal", "هدف ٢٠٣٠"),
-    media: true,
+    media: false,
     defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final.jpg" },
     fields: [
       { id: "label", label: L("Label", "التصنيف"), type: "bi", def: goal.label },
@@ -162,7 +162,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "global.cta",
     page: "global",
     label: L("Call to action (all pages)", "الدعوة (كل الصفحات)"),
-    media: true,
+    media: false,
     defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final2.png", poster: null },
     fields: [
       { id: "tag", label: L("Tag", "الوسم"), type: "bi", def: L("Let's talk", "لنبدأ") },
@@ -197,7 +197,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "studio.offer",
     page: "studio",
     label: L("What the studio offers", "ماذا يقدّم الاستوديو"),
-    media: true,
+    media: false,
     defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid2.jpg", poster: null },
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: artHouse.offer.heading },
@@ -217,7 +217,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "studio.equipment",
     page: "studio",
     label: L("Equipment", "المعدات"),
-    media: true,
+    media: false,
     defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final2.png", poster: null },
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: artHouse.equipment.heading },
@@ -253,7 +253,7 @@ export const SECTIONS: SectionDef[] = [
     slug: "founder.focus",
     page: "founder",
     label: L("Where he works", "أين يعمل"),
-    media: true,
+    media: false,
     defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final.jpg", poster: null },
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: founder.focus.heading },

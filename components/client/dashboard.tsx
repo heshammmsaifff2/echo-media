@@ -191,12 +191,12 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const [receiptView, setReceiptView] = useState<string | null>(null);
   const [downloadState, setDownloadState] = useState<DownloadState | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
 
   const cancelDownload = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+      xhrRef.current = null;
     }
     setDownloadState(null);
   };
@@ -244,8 +244,6 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const handleShareOrSave = async (url: string, meta: ReturnType<typeof getDeliveryFileMeta>, index: number) => {
     if (downloadState) return;
 
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
     const directUrl = getDirectDownloadUrl(url);
 
     setDownloadState({
@@ -259,60 +257,46 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
     });
 
     try {
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) throw new Error(isAr ? `فشل تحميل الملف (رمز الخطأ ${res.status})` : `Failed to fetch file (${res.status})`);
+      // XHR reports true byte-by-byte download progress on iOS Safari, where a
+      // streaming fetch reader is buffered and never updates incrementally.
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
+        xhr.open("GET", url, true);
+        xhr.responseType = "blob";
 
-      const contentLength = res.headers.get("content-length");
-      const total = contentLength ? parseInt(contentLength, 10) : 0;
-      let loaded = 0;
-      let blob: Blob;
-
-      if (res.body && typeof res.body.getReader === "function") {
-        const reader = res.body.getReader();
-        const chunks: BlobPart[] = [];
-        let lastUpdate = 0;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            chunks.push(value);
-            loaded += value.length;
-
-            const now = Date.now();
-            if (now - lastUpdate > 80 || (total > 0 && loaded >= total)) {
-              lastUpdate = now;
-              const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : null;
-              setDownloadState({
-                index,
-                name: meta.name,
-                loaded,
-                total,
-                percent,
-                status: "downloading",
-                directUrl,
-              });
-            }
+        xhr.onprogress = (e) => {
+          const total = e.lengthComputable ? e.total : 0;
+          const percent = total > 0 ? Math.min(100, Math.round((e.loaded / total) * 100)) : null;
+          setDownloadState({
+            index,
+            name: meta.name,
+            loaded: e.loaded,
+            total,
+            percent,
+            status: "downloading",
+            directUrl,
+          });
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300 && xhr.response) {
+            resolve(xhr.response as Blob);
+          } else {
+            reject(new Error(isAr ? `فشل تحميل الملف (رمز الخطأ ${xhr.status})` : `Failed to fetch file (${xhr.status})`));
           }
-        }
+        };
+        xhr.onerror = () =>
+          reject(new Error(isAr ? "فشل الاتصال بالخادم أثناء التحميل" : "Network error while downloading"));
+        xhr.onabort = () => reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+        xhr.send();
+      });
 
-        const ext = meta.name.split(".").pop()?.toLowerCase() || (meta.isVideo ? "mp4" : "jpg");
-        const defaultMime = meta.isVideo
-          ? (ext === "mov" ? "video/quicktime" : "video/mp4")
-          : meta.isImage
-            ? `image/${ext}`
-            : "application/octet-stream";
-        const mime = res.headers.get("content-type") || defaultMime;
-        blob = new Blob(chunks, { type: mime });
-      } else {
-        blob = await res.blob();
-      }
-
+      const size = blob.size;
       setDownloadState({
         index,
         name: meta.name,
-        loaded: total > 0 ? total : loaded,
-        total: total > 0 ? total : loaded,
+        loaded: size,
+        total: size,
         percent: 100,
         status: "processing",
         directUrl,
@@ -354,8 +338,8 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
           setDownloadState({
             index,
             name: meta.name,
-            loaded: total > 0 ? total : loaded,
-            total: total > 0 ? total : loaded,
+            loaded: size,
+            total: size,
             percent: 100,
             status: "ready_to_save",
             file,
@@ -391,7 +375,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
         directUrl,
       });
     } finally {
-      abortControllerRef.current = null;
+      xhrRef.current = null;
     }
   };
 
