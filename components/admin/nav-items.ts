@@ -6,6 +6,7 @@ import {
   LayoutTemplate,
   Mail,
   Contact,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,5 +20,6 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/portfolio", icon: Image, labelEn: "Portfolio", labelAr: "الأعمال" },
   { href: "/admin/messages", icon: Mail, labelEn: "Messages", labelAr: "الرسائل" },
   { href: "/admin/orders", icon: ShoppingCart, labelEn: "Orders", labelAr: "الطلبات" },
+  { href: "/admin/finance", icon: Wallet, labelEn: "Finance", labelAr: "المالية" },
   { href: "/admin/clients", icon: Users, labelEn: "Clients", labelAr: "العملاء" },
 ];
