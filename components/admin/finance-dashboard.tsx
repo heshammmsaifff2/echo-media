@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { type Payment, confirmedTotal, remainingBalance, isFullyPaid } from "@/lib/payments";
-import { Wallet, Coins, Clock, Banknote, Receipt, TrendingUp } from "lucide-react";
+import { Wallet, Coins, Clock, Banknote, Receipt, TrendingUp, RefreshCw } from "lucide-react";
 
 export type FinanceOrder = {
   id: string;
@@ -41,6 +43,7 @@ function orderStatus(o: FinanceOrder): OrderStatus {
 
 export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
   const { isAr } = useI18n();
+  const router = useRouter();
   const t = (en: string, ar: string) => (isAr ? ar : en);
   const currency = isAr ? "ج.م" : "EGP";
   const fmt = (n: number) => `${Number(n || 0).toLocaleString()} ${currency}`;
@@ -106,8 +109,20 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
   const cashTotal = txns.filter((x) => x.isCash).reduce((s, x) => s + x.amount, 0);
   const receiptTotal = collected - cashTotal;
 
-  const outstanding = orders.reduce((s, o) => s + remainingBalance(o.total_amount, o.order_payments || []), 0);
-  const totalValue = orders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+  // Orders matching the date (by order date) + status filters — drives the
+  // orders table and the outstanding/value totals, so every filter has effect.
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      const d = new Date(o.created_at);
+      if (rangeStart && d < rangeStart) return false;
+      if (rangeEnd && d > rangeEnd) return false;
+      if (status !== "all" && orderStatus(o) !== status) return false;
+      return true;
+    });
+  }, [orders, rangeStart, rangeEnd, status]);
+
+  const outstanding = filteredOrders.reduce((s, o) => s + remainingBalance(o.total_amount, o.order_payments || []), 0);
+  const totalValue = filteredOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
 
   // Monthly breakdown of the filtered income.
   const byMonth = useMemo(() => {
@@ -150,18 +165,23 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">{t("Finance", "المالية")}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {t("How much came in, when, and what's still owed.", "كام دخل، إمتى، وكام لسه مستحق.")}
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{t("Finance", "المالية")}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("How much came in, when, and what's still owed.", "كام دخل، إمتى، وكام لسه مستحق.")}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => router.refresh()} className="gap-2 cursor-pointer shrink-0">
+          <RefreshCw size={15} /> {t("Refresh", "تحديث")}
+        </Button>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <SummaryCard icon={<Wallet size={18} />} tone="green" label={t("Collected (in range)", "المحصّل (في الفترة)")} value={fmt(collected)} sub={`${txns.length} ${t("payments", "دفعة")}`} />
-        <SummaryCard icon={<Clock size={18} />} tone="amber" label={t("Outstanding (all)", "المتبقّي (إجمالي)")} value={fmt(outstanding)} sub={t("across all orders", "على كل الطلبات")} />
-        <SummaryCard icon={<TrendingUp size={18} />} tone="blue" label={t("Orders value (all)", "قيمة الطلبات (إجمالي)")} value={fmt(totalValue)} sub={`${orders.length} ${t("orders", "طلب")}`} />
+        <SummaryCard icon={<Clock size={18} />} tone="amber" label={t("Outstanding", "المتبقّي")} value={fmt(outstanding)} sub={`${filteredOrders.length} ${t("orders", "طلب")}`} />
+        <SummaryCard icon={<TrendingUp size={18} />} tone="blue" label={t("Orders value", "قيمة الطلبات")} value={fmt(totalValue)} sub={`${filteredOrders.length} ${t("orders", "طلب")}`} />
         <SummaryCard
           icon={<Coins size={18} />}
           tone="violet"
@@ -219,6 +239,47 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
           ))}
         </div>
       )}
+
+      {/* Orders (respects date + status filters) */}
+      <Card className="mb-6">
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+            <h2 className="text-sm font-semibold">{t("Orders", "الطلبات")}</h2>
+            <span className="text-xs text-muted-foreground">{filteredOrders.length} {t("orders", "طلب")}</span>
+          </div>
+          {filteredOrders.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+              {t("No orders match these filters.", "لا توجد طلبات مطابقة للفلاتر.")}
+            </p>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {filteredOrders.map((o) => {
+                const paid = confirmedTotal(o.order_payments || []);
+                const remaining = remainingBalance(o.total_amount, o.order_payments || []);
+                return (
+                  <div key={o.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{o.project_title}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {o.profiles?.full_name || o.profiles?.email || t("Unknown", "غير معروف")} · {fmtDate(o.created_at)}
+                      </p>
+                    </div>
+                    <StatusBadge status={orderStatus(o)} t={t} />
+                    <div className="text-end whitespace-nowrap">
+                      <p className="text-sm font-semibold">{fmt(o.total_amount)}</p>
+                      <p className="text-[11px]">
+                        <span className="text-green-500">{fmt(paid)}</span>
+                        <span className="text-muted-foreground"> · </span>
+                        <span className="text-amber-500">{fmt(remaining)}</span>
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Income log */}
       <Card>

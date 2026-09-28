@@ -4,7 +4,7 @@ import { pageMetadata, organizationJsonLd } from "@/lib/seo";
 import { isLocale, type Locale } from "@/lib/locale";
 import { HeroSection } from "@/components/sections/hero";
 import { LogoMoment } from "@/components/sections/logo-moment";
-import { ShowreelSection, FilmSection } from "@/components/sections/showreel";
+import { ShowreelSection, LightingSection } from "@/components/sections/showreel";
 import { FeaturedWork } from "@/components/sections/featured-work";
 import { ClientsSection } from "@/components/sections/process";
 import { GoalSection, CtaSection } from "@/components/sections/closing";
@@ -21,12 +21,16 @@ export default async function Home({ params }: Params) {
   const typed: Locale = isLocale(locale) ? locale : "en";
 
   const supabase = await createClient();
-  const { data: featured } = await supabase
-    .from("portfolio_items")
-    .select("*")
-    .eq("is_featured", true)
-    .order("order_index")
-    .limit(6);
+  const [featuredRes, catsRes] = await Promise.all([
+    supabase
+      .from("portfolio_items")
+      .select("*")
+      .eq("is_featured", true)
+      .order("order_index")
+      .limit(6),
+    supabase.from("portfolio_categories").select("*").order("order_index"),
+  ]);
+  const featured = featuredRes.data;
 
   return (
     <>
@@ -39,9 +43,9 @@ export default async function Home({ params }: Params) {
       />
 
       <HeroSection />
-      <FilmSection />
+      <LightingSection />
       <ShowreelSection />
-      <FeaturedWork items={featured || []} />
+      <FeaturedWork items={featured || []} categories={catsRes.data || []} />
       <LogoMoment />
       <ClientsSection />
       <GoalSection />

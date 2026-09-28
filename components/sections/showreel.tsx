@@ -1,121 +1,92 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useI18n } from "@/lib/i18n";
 import { style } from "@/lib/brand";
 import { LazyVideo } from "@/components/lazy-video";
 import { useSection } from "@/components/content-provider";
-import { Play, X } from "lucide-react";
 import {
   FadeIn,
+  Parallax,
   StaggerContainer,
   StaggerItem,
   LineRevealInView,
 } from "@/components/motion";
 
-/**
- * The second component on the homepage: the brand film full-bleed, played with
- * sound. It fills the viewport and the visitor presses play to hear it.
- */
-export function FilmSection() {
-  const { isAr } = useI18n();
-  const { bg, field } = useSection("home.film");
-  const [open, setOpen] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
+/** Cloudinary videos can serve a still frame as a poster by swapping the ext. */
+function posterFor(url: string): string | undefined {
+  if (url && url.includes("/video/upload/")) {
+    return url.replace(/\.(mp4|mov|webm|m4v|avi|mkv)(\?|$)/i, ".jpg$2");
+  }
+  return undefined;
+}
 
-  const tag = field("tag", { en: "Selected Work", ar: "من أعمالنا" });
-  const title = field("title", {
+const LIGHTING_DEFAULT = {
+  heading: {
     en: "Intentional lighting. Crafted for impact.",
     ar: "إضاءة مدروسة. تصنع الفارق.",
-  });
+  },
+  body: {
+    en: "Lighting isn't just about visibility — it's what shapes cinematic depth, mood, and visual identity.",
+    ar: "الإضاءة ليست مجرد وضوح للمشهد، بل هي ما يمنح الكادر عمقه السينمائي وهويته البصرية المميزة.",
+  },
+  video1: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/vid1-16-9.mp4",
+  video2: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/vid2-a6-9.mp4",
+};
 
-  const src = bg.type === "video" && bg.url ? bg.url : "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final_2.mp4";
-  const poster = bg.poster ?? "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final2.png";
+/**
+ * The lighting beat — the message beside a pair of vertical videos layered with
+ * parallax so it reads in depth. Both videos are editable from the admin panel.
+ */
+export function LightingSection() {
+  const { pick, isAr } = useI18n();
+  const { field } = useSection("home.lighting");
 
-  // Lock the page and allow Esc to close while the full player is open.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    videoRef.current?.play().catch(() => {});
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
+  const heading = pick(field("heading", LIGHTING_DEFAULT.heading));
+  const body = pick(field("body", LIGHTING_DEFAULT.body));
+  const video1 = field("video1", LIGHTING_DEFAULT.video1);
+  const video2 = field("video2", LIGHTING_DEFAULT.video2);
 
   return (
-    <section className="relative min-h-[100svh] w-full overflow-hidden bg-black">
-      {/* Muted preview loop behind the button. */}
-      <LazyVideo
-        src={src}
-        poster={poster}
-        mode="ambient"
-        fit="contain"
-        label={isAr ? "فيلم Echo" : "Echo brand film"}
-        className="absolute inset-0 h-full w-full"
-      />
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/40" />
+    <section className="relative overflow-hidden border-t border-border bg-surface py-28 sm:py-36 grain">
+      <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
+        <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
+          <div className="lg:col-span-5">
+            <FadeIn>
+              <h3 className="display-md text-bright">{heading}</h3>
+              <p className="mt-6 text-lg leading-relaxed text-muted-foreground">{body}</p>
+            </FadeIn>
+          </div>
 
-      {/* The whole frame opens the full player. */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={isAr ? "تشغيل الفيديو كاملاً" : "Play full video"}
-        className="group absolute inset-0 z-[1] grid place-items-center cursor-pointer"
-      >
-        <span className="grid h-24 w-24 place-items-center rounded-full border border-white/30 bg-black/40 backdrop-blur-md transition-all duration-300 group-hover:scale-105 group-hover:border-white/60 group-hover:bg-black/60">
-          <Play size={34} className="ms-1 text-white" fill="currentColor" />
-        </span>
-      </button>
+          <div className="lg:col-span-7">
+            <div className="grid grid-cols-2 gap-5 sm:gap-8">
+              <Parallax distance={34}>
+                <LazyVideo
+                  src={video1}
+                  poster={posterFor(video1)}
+                  mode="ambient"
+                  label={isAr ? "عمل عمودي ١" : "Vertical work 1"}
+                  className="aspect-[9/16] w-full rounded-xl border border-border"
+                />
+              </Parallax>
 
-      {/* Title over the top of the frame. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] bg-gradient-to-b from-black/70 to-transparent">
-        <div className="mx-auto max-w-[1400px] px-6 pb-24 pt-28 sm:px-10 sm:pt-32">
-          <span className="eyebrow text-bright/70">{isAr ? tag.ar : tag.en}</span>
-          <h2 className="display-md mt-5 max-w-3xl text-bright drop-shadow-[0_2px_30px_rgba(0,0,0,0.6)]">
-            {isAr ? title.ar : title.en}
-          </h2>
+              {/* Offset so the pair reads as layered depth, not a grid. */}
+              <Parallax distance={-34} className="mt-10 sm:mt-16">
+                <LazyVideo
+                  src={video2}
+                  poster={posterFor(video2)}
+                  mode="ambient"
+                  label={isAr ? "عمل عمودي ٢" : "Vertical work 2"}
+                  className="aspect-[9/16] w-full rounded-xl border border-border"
+                />
+              </Parallax>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Full-screen player — portalled to the body so the panel's scale
-          transform doesn't reposition the fixed overlay. */}
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[100] grid place-items-center bg-black/95 p-4 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
-          >
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label={isAr ? "إغلاق" : "Close"}
-              className="absolute end-5 top-5 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-colors hover:bg-white/20 cursor-pointer"
-            >
-              <X size={20} />
-            </button>
-            <video
-              ref={videoRef}
-              src={src}
-              poster={poster}
-              controls
-              autoPlay
-              playsInline
-              onClick={(e) => e.stopPropagation()}
-              className="max-h-[90vh] w-auto max-w-[95vw] rounded-lg shadow-2xl"
-            />
-          </div>,
-          document.body
-        )}
     </section>
   );
 }
+
 
 /**
  * The Echo style — the six things every film that leaves this house carries.

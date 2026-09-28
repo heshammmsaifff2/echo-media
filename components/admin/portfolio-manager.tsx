@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import type { Category, Subcategory } from "@/components/admin/categories-manager";
 
 type PortfolioItem = {
   id: string;
@@ -25,7 +26,9 @@ type PortfolioItem = {
   title_ar: string;
   description_en: string;
   description_ar: string;
-  category: string;
+  category: string | null;
+  category_id: string | null;
+  subcategory_id: string | null;
   media_url: string;
   thumbnail_url: string | null;
   media_type: string;
@@ -35,10 +38,18 @@ type PortfolioItem = {
 
 const EMPTY_FORM = {
   title_en: "", title_ar: "", description_en: "", description_ar: "",
-  category: "reels", media_type: "video", is_featured: false,
+  category_id: "", subcategory_id: "", media_type: "video", is_featured: false,
 };
 
-export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem[] }) {
+export function PortfolioManager({
+  initialItems,
+  categories,
+  subcategories,
+}: {
+  initialItems: PortfolioItem[];
+  categories: Category[];
+  subcategories: Subcategory[];
+}) {
   const [items, setItems] = useState(initialItems);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PortfolioItem | null>(null);
@@ -92,7 +103,7 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
 
   const openCreate = () => {
     setEditing(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, category_id: categories[0]?.id ?? "" });
     setMediaFile(null);
     setThumbFile(null);
     setCapturedThumbPreview(null);
@@ -107,7 +118,8 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
     setForm({
       title_en: item.title_en, title_ar: item.title_ar,
       description_en: item.description_en, description_ar: item.description_ar,
-      category: item.category, media_type: item.media_type, is_featured: item.is_featured,
+      category_id: item.category_id ?? "", subcategory_id: item.subcategory_id ?? "",
+      media_type: item.media_type, is_featured: item.is_featured,
     });
     setMediaFile(null);
     setThumbFile(null);
@@ -232,7 +244,8 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
       const payload = {
         title_en: form.title_en, title_ar: form.title_ar,
         description_en: form.description_en, description_ar: form.description_ar,
-        category: form.category, media_type: form.media_type,
+        category_id: form.category_id || null, subcategory_id: form.subcategory_id || null,
+        media_type: form.media_type,
         media_url, thumbnail_url, is_featured: form.is_featured,
         order_index: editing?.order_index ?? items.length,
       };
@@ -281,11 +294,14 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
     setItems(items.map((i) => i.id === item.id ? { ...i, is_featured: !i.is_featured } : i));
   };
 
-  const categories: Record<string, string> = {
-    reels: isAr ? "ريلز" : "Reels",
-    video: isAr ? "فيديو" : "Video",
-    podcasts: isAr ? "بودكاست" : "Podcasts",
-    photos: isAr ? "صور" : "Photos",
+  const catSubs = subcategories.filter((s) => s.category_id === form.category_id);
+  const catName = (id: string | null) => {
+    const c = categories.find((x) => x.id === id);
+    return c ? (isAr ? c.name_ar || c.name_en : c.name_en || c.name_ar) : "";
+  };
+  const subName = (id: string | null) => {
+    const s = subcategories.find((x) => x.id === id);
+    return s ? (isAr ? s.name_ar || s.name_en : s.name_en || s.name_ar) : "";
   };
 
   return (
@@ -326,15 +342,33 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>{isAr ? "التصنيف" : "Category"}</Label>
-                  <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v, subcategory_id: "" })}>
+                    <SelectTrigger><SelectValue placeholder={isAr ? "اختر تصنيف" : "Select category"} /></SelectTrigger>
                     <SelectContent>
-                      {Object.entries(categories).map(([val, label]) => (
-                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{isAr ? c.name_ar || c.name_en : c.name_en || c.name_ar}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid gap-2">
+                  <Label>{isAr ? "الفرع (اختياري)" : "Subcategory (optional)"}</Label>
+                  <Select
+                    value={form.subcategory_id || "none"}
+                    onValueChange={(v) => setForm({ ...form, subcategory_id: v === "none" ? "" : v })}
+                    disabled={catSubs.length === 0}
+                  >
+                    <SelectTrigger><SelectValue placeholder={isAr ? "بدون" : "None"} /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{isAr ? "بدون" : "None"}</SelectItem>
+                      {catSubs.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{isAr ? s.name_ar || s.name_en : s.name_en || s.name_ar}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>{isAr ? "نوع الوسائط" : "Media Type"}</Label>
                   <Select value={form.media_type} onValueChange={(v) => setForm({ ...form, media_type: v })}>
@@ -623,7 +657,12 @@ export function PortfolioManager({ initialItems }: { initialItems: PortfolioItem
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{isAr ? item.title_ar : item.title_en}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{categories[item.category] || item.category} &middot; {item.media_type === "video" ? (isAr ? "فيديو" : "Video") : (isAr ? "صورة" : "Image")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {catName(item.category_id) || (isAr ? "بدون تصنيف" : "Uncategorized")}
+                    {item.subcategory_id ? ` · ${subName(item.subcategory_id)}` : ""}
+                    {" · "}
+                    {item.media_type === "video" ? (isAr ? "فيديو" : "Video") : (isAr ? "صورة" : "Image")}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button

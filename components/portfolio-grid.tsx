@@ -13,26 +13,47 @@ type PortfolioItem = {
   title_ar: string;
   description_en: string;
   description_ar: string;
-  category: string;
+  category: string | null;
+  category_id: string | null;
+  subcategory_id: string | null;
   media_url: string;
   thumbnail_url: string | null;
   media_type: string;
 };
 
-const CATEGORIES = [
-  { value: "all", labelEn: "All", labelAr: "الكل" },
-  { value: "reels", labelEn: "Reels", labelAr: "ريلز" },
-  { value: "video", labelEn: "Video", labelAr: "فيديو" },
-  { value: "podcasts", labelEn: "Podcasts", labelAr: "بودكاست" },
-  { value: "photos", labelEn: "Photos", labelAr: "صور" },
-];
+type Category = { id: string; name_en: string; name_ar: string; order_index: number };
+type Subcategory = { id: string; category_id: string; name_en: string; name_ar: string; order_index: number };
 
-export function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
+export function PortfolioGrid({
+  items,
+  categories,
+  subcategories,
+}: {
+  items: PortfolioItem[];
+  categories: Category[];
+  subcategories: Subcategory[];
+}) {
   const { isAr } = useI18n();
-  const [filter, setFilter] = useState("all");
+  const [catFilter, setCatFilter] = useState<string>("all");
+  const [subFilter, setSubFilter] = useState<string>("all");
   const [lightbox, setLightbox] = useState<PortfolioItem | null>(null);
 
-  const filtered = filter === "all" ? items : items.filter((i) => i.category === filter);
+  const catName = (c: Category) => (isAr ? c.name_ar || c.name_en : c.name_en || c.name_ar);
+  const subName = (s: Subcategory) => (isAr ? s.name_ar || s.name_en : s.name_en || s.name_ar);
+
+  const activeSubs =
+    catFilter === "all" ? [] : subcategories.filter((s) => s.category_id === catFilter);
+
+  const filtered = items.filter((i) => {
+    if (catFilter !== "all" && i.category_id !== catFilter) return false;
+    if (subFilter !== "all" && i.subcategory_id !== subFilter) return false;
+    return true;
+  });
+
+  const selectCategory = (id: string) => {
+    setCatFilter(id);
+    setSubFilter("all");
+  };
 
   return (
     <>
@@ -49,21 +70,60 @@ export function PortfolioGrid({ items }: { items: PortfolioItem[] }) {
             </p>
           </FadeIn>
 
-          <FadeIn delay={0.1} className="mb-14 flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
+          <FadeIn delay={0.1} className="mb-6 flex flex-wrap gap-2">
+            <button
+              onClick={() => selectCategory("all")}
+              className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors duration-300 cursor-pointer ${
+                catFilter === "all"
+                  ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))]"
+                  : "border border-border text-muted-foreground hover:border-[hsl(var(--echo-accent))] hover:text-bright"
+              }`}
+            >
+              {isAr ? "الكل" : "All"}
+            </button>
+            {categories.map((cat) => (
               <button
-                key={cat.value}
-                onClick={() => setFilter(cat.value)}
+                key={cat.id}
+                onClick={() => selectCategory(cat.id)}
                 className={`rounded-full px-5 py-2.5 text-sm font-medium transition-colors duration-300 cursor-pointer ${
-                  filter === cat.value
+                  catFilter === cat.id
                     ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))]"
                     : "border border-border text-muted-foreground hover:border-[hsl(var(--echo-accent))] hover:text-bright"
                 }`}
               >
-                {isAr ? cat.labelAr : cat.labelEn}
+                {catName(cat)}
               </button>
             ))}
           </FadeIn>
+
+          {activeSubs.length > 0 && (
+            <FadeIn className="mb-14 flex flex-wrap gap-2">
+              <button
+                onClick={() => setSubFilter("all")}
+                className={`rounded-full px-4 py-2 text-xs font-medium transition-colors duration-300 cursor-pointer ${
+                  subFilter === "all"
+                    ? "bg-bright/90 text-[hsl(var(--echo-base))]"
+                    : "border border-border/70 text-muted-foreground hover:text-bright"
+                }`}
+              >
+                {isAr ? "الكل" : "All"}
+              </button>
+              {activeSubs.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => setSubFilter(sub.id)}
+                  className={`rounded-full px-4 py-2 text-xs font-medium transition-colors duration-300 cursor-pointer ${
+                    subFilter === sub.id
+                      ? "bg-bright/90 text-[hsl(var(--echo-base))]"
+                      : "border border-border/70 text-muted-foreground hover:text-bright"
+                  }`}
+                >
+                  {subName(sub)}
+                </button>
+              ))}
+            </FadeIn>
+          )}
+          {activeSubs.length === 0 && <div className="mb-8" />}
 
           {filtered.length === 0 ? (
             <div className="py-20 text-muted-foreground">

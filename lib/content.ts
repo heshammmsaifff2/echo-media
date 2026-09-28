@@ -40,8 +40,10 @@ export type SectionRow = {
   bg_public_id: string | null;
 };
 
-/** A single editable field inside a section's content blob. */
-export type FieldType = "bi" | "biLong" | "biList" | "biObjList";
+/** A single editable field inside a section's content blob.
+ * `media` is a single uploadable image/video URL (not a background — a piece of
+ * media shown inside the section, e.g. one of the two lighting videos). */
+export type FieldType = "bi" | "biLong" | "biList" | "biObjList" | "media";
 
 export type ObjField = { id: string; label: Bi; long?: boolean };
 
@@ -99,14 +101,16 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    slug: "home.film",
+    slug: "home.lighting",
     page: "home",
-    label: L("Brand film (with sound)", "الفيلم (بصوت)"),
-    media: true,
-    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final_2.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final2.png" },
+    label: L("Lighting (two videos)", "الإضاءة (فيديوهين)"),
+    media: false,
+    defaultBg: { type: "none", url: null, poster: null },
     fields: [
-      { id: "tag", label: L("Tag", "الوسم"), type: "bi", def: L("Selected Work", "من أعمالنا") },
-      { id: "title", label: L("Title", "العنوان"), type: "bi", def: L("Intentional lighting. Crafted for impact.", "إضاءة مدروسة. تصنع الفارق.") },
+      { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: L("Intentional lighting. Crafted for impact.", "إضاءة مدروسة. تصنع الفارق.") },
+      { id: "body", label: L("Body", "النص"), type: "biLong", def: L("Lighting isn't just about visibility — it's what shapes cinematic depth, mood, and visual identity.", "الإضاءة ليست مجرد وضوح للمشهد، بل هي ما يمنح الكادر عمقه السينمائي وهويته البصرية المميزة.") },
+      { id: "video1", label: L("Video 1", "فيديو ١"), type: "media", def: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/vid1-16-9.mp4" },
+      { id: "video2", label: L("Video 2", "فيديو ٢"), type: "media", def: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/vid2-a6-9.mp4" },
     ],
   },
   {
@@ -289,6 +293,8 @@ export function contentBg(row: SectionRow | undefined, fallback: SectionBg): Sec
 export function contentField<T>(row: SectionRow | undefined, id: string, fallback: T): T {
   const v = row?.content?.[id];
   if (v == null) return fallback;
+  // A blank string (e.g. an empty media/text field) counts as "unset".
+  if (typeof v === "string" && v.trim() === "") return fallback;
   // Treat empty strings / empty bilingual values as "unset".
   if (typeof v === "object" && !Array.isArray(v)) {
     const o = v as Record<string, unknown>;

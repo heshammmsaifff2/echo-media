@@ -13,10 +13,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function PortfolioPage() {
   const supabase = await createClient();
-  const { data: items } = await supabase
-    .from("portfolio_items")
-    .select("*")
-    .order("order_index");
+  const [itemsRes, catsRes, subsRes] = await Promise.all([
+    supabase.from("portfolio_items").select("*").order("order_index"),
+    supabase.from("portfolio_categories").select("*").order("order_index"),
+    supabase.from("portfolio_subcategories").select("*").order("order_index"),
+  ]);
 
-  return <PortfolioGrid items={items || []} />;
+  return (
+    <PortfolioGrid
+      items={itemsRes.data || []}
+      categories={catsRes.data || []}
+      subcategories={subsRes.data || []}
+    />
+  );
 }

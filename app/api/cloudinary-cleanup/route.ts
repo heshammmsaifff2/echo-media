@@ -1,6 +1,7 @@
 import { cloudinary } from "@/lib/cloudinary";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminRequest } from "@/lib/auth";
+import { SECTIONS } from "@/lib/content";
 import { NextResponse } from "next/server";
 
 const RESOURCE_TYPES = ["image", "video", "raw"] as const;
@@ -16,7 +17,7 @@ export async function GET() {
     const [portfolioRes, ordersRes, sectionsRes, paymentsRes] = await Promise.all([
       supabase.from("portfolio_items").select("media_url, thumbnail_url"),
       supabase.from("client_orders").select("delivery_files, receipt_url"),
-      supabase.from("section_content").select("bg_url, bg_poster_url"),
+      supabase.from("section_content").select("bg_url, bg_poster_url, content"),
       supabase.from("order_payments").select("receipt_url"),
     ]);
 
@@ -34,6 +35,12 @@ export async function GET() {
       const variants = extractPublicIdVariants(url);
       variants.forEach((id) => referencedIds.add(id));
     };
+    // Walk any JSON value and register every Cloudinary URL string inside it.
+    const addFromJson = (v: unknown) => {
+      if (typeof v === "string") addUrl(v);
+      else if (Array.isArray(v)) v.forEach(addFromJson);
+      else if (v && typeof v === "object") Object.values(v as Record<string, unknown>).forEach(addFromJson);
+    };
 
     (portfolioRes.data || []).forEach((item) => {
       addUrl(item.media_url);
@@ -45,12 +52,23 @@ export async function GET() {
       (order.delivery_files || []).forEach(addUrl);
     });
 
-    // Editable section backgrounds/posters and installment receipts.
+    // Editable section backgrounds/posters, in-content media, and receipts.
     (sectionsRes.data || []).forEach((s) => {
       addUrl(s.bg_url);
       addUrl(s.bg_poster_url);
+      addFromJson((s as { content?: unknown }).content);
     });
     (paymentsRes.data || []).forEach((p) => addUrl(p.receipt_url));
+
+    // Code defaults from the section registry — media referenced only via a
+    // fallback (not stored in the DB) must never be treated as orphaned.
+    for (const def of SECTIONS) {
+      addUrl(def.defaultBg?.url);
+      addUrl(def.defaultBg?.poster);
+      for (const f of def.fields) {
+        if (typeof f.def === "string") addUrl(f.def);
+      }
+    }
 
     const orphaned: { public_id: string; url: string; type: string }[] = [];
 
@@ -73,11 +91,8 @@ export async function GET() {
           const resId = resource.public_id;
           const resIdWithoutExt = resId.replace(/\.[^/.]+$/, "");
 
-          // Never touch the site's own media folder, even if a background is
-          // only set from a code default and not stored in the database.
-          if (resId.startsWith("echo/site/")) continue;
-
-          // If not referenced in database, it's safe to clean up
+          // Orphaned = referenced by neither the database (backgrounds, content
+          // media, portfolio, orders, payments) nor the code registry defaults.
           if (!referencedIds.has(resId) && !referencedIds.has(resIdWithoutExt)) {
             orphaned.push({
               public_id: resource.public_id,
@@ -110,14 +125,9 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "No items provided" }, { status: 400 });
     }
 
-    // Hard guard: the site's own media folder is never deletable here.
-    const deletable = items.filter(
-      (i) => typeof i?.public_id === "string" && !i.public_id.startsWith("echo/site/")
-    );
-
     // delete_resources only removes one resource_type per call.
     const byType = new Map<string, string[]>();
-    for (const item of deletable) {
+    for (const item of items) {
       const type = item.type || "image";
       if (!byType.has(type)) byType.set(type, []);
       byType.get(type)!.push(item.public_id);

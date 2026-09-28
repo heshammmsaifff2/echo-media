@@ -16,7 +16,8 @@ import { Pencil, Plus, Trash2, Loader2, ImageIcon, Film, Type } from "lucide-rea
 type BiVal = { en: string; ar: string };
 type ListVal = { en: string[]; ar: string[] };
 type ObjListVal = { en: Record<string, string>[]; ar: Record<string, string>[] };
-type FieldVal = BiVal | ListVal | ObjListVal;
+type MediaVal = string; // a single uploaded image/video URL
+type FieldVal = BiVal | ListVal | ObjListVal | MediaVal;
 
 type Bg = {
   type: "image" | "video" | "none";
@@ -33,6 +34,9 @@ const PAGE_LABEL: Record<string, { en: string; ar: string }> = {
 };
 
 function cloneDefault(f: FieldDef): FieldVal {
+  if (f.type === "media") {
+    return (typeof f.def === "string" ? f.def : "") as MediaVal;
+  }
   const d = f.def as Record<string, unknown>;
   if (f.type === "biList") {
     return { en: [...((d.en as string[]) ?? [])], ar: [...((d.ar as string[]) ?? [])] };
@@ -377,6 +381,66 @@ function TextField({
   );
 }
 
+function MediaFieldEditor({
+  label,
+  value,
+  onChange,
+  t,
+}: {
+  label: string;
+  value: string;
+  onChange: (s: string) => void;
+  t: (en: string, ar: string) => string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const isVideo = /\.(mp4|mov|webm|m4v|avi|mkv)(\?|$)/i.test(value) || value.includes("/video/upload/");
+
+  const upload = async (file: File) => {
+    setUploading(true);
+    try {
+      const { url } = await uploadToCloudinary(file, "echo/site");
+      onChange(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t("Upload failed", "فشل الرفع"));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      {value &&
+        (isVideo ? (
+          <video src={value} className="max-h-40 rounded-md" muted controls />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="" className="max-h-40 rounded-md object-contain" />
+        ))}
+      <Input
+        type="file"
+        accept="video/*,image/*"
+        disabled={uploading}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) upload(f);
+        }}
+      />
+      <Input
+        value={value}
+        dir="ltr"
+        placeholder="https://…"
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {uploading && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 size={13} className="animate-spin" /> {t("Uploading…", "جاري الرفع…")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function FieldEditor({
   field,
   value,
@@ -389,6 +453,10 @@ function FieldEditor({
   t: (en: string, ar: string) => string;
 }) {
   const label = t(field.label.en, field.label.ar);
+
+  if (field.type === "media") {
+    return <MediaFieldEditor label={label} value={(value as string) || ""} onChange={(s) => onChange(s)} t={t} />;
+  }
 
   if (field.type === "bi" || field.type === "biLong") {
     const v = value as BiVal;

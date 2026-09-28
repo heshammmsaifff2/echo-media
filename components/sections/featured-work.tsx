@@ -10,21 +10,29 @@ type PortfolioItem = {
   id: string;
   title_en: string;
   title_ar: string;
-  category: string;
+  category: string | null;
+  category_id: string | null;
   media_url: string;
   thumbnail_url: string | null;
   media_type: string;
 };
 
-const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
-  reels: { en: "Reels", ar: "ريلز" },
-  video: { en: "Video", ar: "فيديو" },
-  podcasts: { en: "Podcasts", ar: "بودكاست" },
-  photos: { en: "Photos", ar: "صور" },
-};
+type Category = { id: string; name_en: string; name_ar: string };
 
-export function FeaturedWork({ items }: { items: PortfolioItem[] }) {
+export function FeaturedWork({
+  items,
+  categories = [],
+}: {
+  items: PortfolioItem[];
+  categories?: Category[];
+}) {
   const { isAr } = useI18n();
+
+  const categoryLabel = (item: PortfolioItem) => {
+    const cat = categories.find((c) => c.id === item.category_id);
+    if (cat) return isAr ? cat.name_ar || cat.name_en : cat.name_en || cat.name_ar;
+    return item.category || "";
+  };
 
   // Nothing published yet — stay quiet rather than showing an empty shelf.
   if (items.length === 0) return null;
@@ -78,8 +86,7 @@ export function FeaturedWork({ items }: { items: PortfolioItem[] }) {
 
                 <div className="absolute inset-x-0 bottom-0 p-7">
                   <span className="eyebrow text-[hsl(var(--echo-accent))]">
-                    {CATEGORY_LABELS[item.category]?.[isAr ? "ar" : "en"] ||
-                      item.category}
+                    {categoryLabel(item)}
                   </span>
                   <h3 className="mt-2 text-xl font-semibold text-white">
                     {isAr ? item.title_ar : item.title_en}
