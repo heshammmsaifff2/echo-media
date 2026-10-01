@@ -5,7 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { FadeIn, StaggerContainer, StaggerItem, ScaleOnHover } from "@/components/motion";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
-import { X, Play, Sparkles, FolderOpen, ArrowRight } from "lucide-react";
+import { X, Play, Sparkles, FolderOpen, ArrowRight, LayoutGrid } from "lucide-react";
 
 type PortfolioItem = {
   id: string;
@@ -28,55 +28,82 @@ export function PortfolioGrid({
   items,
   categories,
   subcategories,
+  initialCategory = null,
 }: {
   items: PortfolioItem[];
   categories: Category[];
   subcategories: Subcategory[];
+  initialCategory?: string | null;
 }) {
   const { isAr } = useI18n();
-  // Initially null so the user is prompted to select a category first
-  const [catFilter, setCatFilter] = useState<string | null>(null);
+  // Initially null so the user is prompted to select a category first, unless initialCategory is provided
+  const [catFilter, setCatFilter] = useState<string | null>(initialCategory ?? null);
   const [subFilter, setSubFilter] = useState<string>("all");
   const [lightbox, setLightbox] = useState<PortfolioItem | null>(null);
 
   const catName = (c: Category) => (isAr ? c.name_ar || c.name_en : c.name_en || c.name_ar);
   const subName = (s: Subcategory) => (isAr ? s.name_ar || s.name_en : s.name_en || s.name_ar);
 
+  const getItemTitle = (item: PortfolioItem) => {
+    const ar = item.title_ar?.trim();
+    const en = item.title_en?.trim();
+    return isAr ? (ar || en || "") : (en || ar || "");
+  };
+
+  const getItemDesc = (item: PortfolioItem) => {
+    const ar = item.description_ar?.trim();
+    const en = item.description_en?.trim();
+    return isAr ? (ar || en || "") : (en || ar || "");
+  };
+
+  const itemMatchesCategory = (item: PortfolioItem, catId: string | null) => {
+    if (!catId || catId === "all") return true;
+    if (item.category_id === catId) return true;
+    const catObj = categories.find((c) => c.id === catId);
+    if (!catObj || !item.category) return false;
+    const raw = item.category.trim().toLowerCase();
+    const en = (catObj.name_en || "").trim().toLowerCase();
+    const ar = (catObj.name_ar || "").trim().toLowerCase();
+    return (en !== "" && raw === en) || (ar !== "" && raw === ar);
+  };
+
+  const getCategoryCount = (catId: string) => {
+    return items.filter((i) => itemMatchesCategory(i, catId)).length;
+  };
+
   const activeSubs =
     !catFilter || catFilter === "all"
       ? []
       : subcategories.filter((s) => s.category_id === catFilter);
 
+  const uncategorizedSubCount =
+    !catFilter || catFilter === "all"
+      ? 0
+      : items.filter((i) => itemMatchesCategory(i, catFilter) && !i.subcategory_id).length;
+
   const filtered =
     catFilter === null
       ? []
       : items.filter((i) => {
-          if (catFilter !== "all") {
-            const catObj = categories.find((c) => c.id === catFilter);
-            const matchesId = i.category_id === catFilter;
-            const matchesText = !!(
-              catObj &&
-              i.category &&
-              (catObj.name_en.toLowerCase() === i.category.toLowerCase() ||
-                catObj.name_ar === i.category)
-            );
-            if (!matchesId && !matchesText) return false;
+          if (catFilter !== "all" && !itemMatchesCategory(i, catFilter)) {
+            return false;
           }
-          if (subFilter !== "all" && i.subcategory_id !== subFilter) return false;
+          if (subFilter === "none") {
+            if (i.subcategory_id) return false;
+          } else if (subFilter !== "all") {
+            if (i.subcategory_id !== subFilter) return false;
+          }
           return true;
         });
 
-  const selectCategory = (id: string) => {
-    setCatFilter(id);
+  const selectCategory = (id: string | null) => {
+    if (catFilter === id) {
+      // Toggle back to category cards view if clicked again
+      setCatFilter(null);
+    } else {
+      setCatFilter(id);
+    }
     setSubFilter("all");
-  };
-
-  const getCategoryCount = (catId: string, catEn: string) => {
-    return items.filter(
-      (i) =>
-        i.category_id === catId ||
-        (i.category && catEn && i.category.toLowerCase() === catEn.toLowerCase())
-    ).length;
   };
 
   return (
@@ -96,9 +123,26 @@ export function PortfolioGrid({
 
           {/* Categories Selector Tabs */}
           <FadeIn delay={0.1} className="mb-6 flex flex-wrap items-center gap-2">
+            {/* View Categories Cards Button */}
+            <button
+              onClick={() => {
+                setCatFilter(null);
+                setSubFilter("all");
+              }}
+              className={`group rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer inline-flex items-center gap-2 ${
+                catFilter === null
+                  ? "bg-white text-black font-semibold shadow-md"
+                  : "border border-dashed border-border/80 text-muted-foreground hover:border-[hsl(var(--echo-accent))]/60 hover:text-bright"
+              }`}
+              title={isAr ? "عرض بطاقات الفئات" : "View Category Cards"}
+            >
+              <LayoutGrid size={15} />
+              <span>{isAr ? "الفئات" : "Categories"}</span>
+            </button>
+
             {categories.map((cat) => {
               const isSelected = catFilter === cat.id;
-              const count = getCategoryCount(cat.id, cat.name_en);
+              const count = getCategoryCount(cat.id);
 
               return (
                 <button
@@ -129,24 +173,36 @@ export function PortfolioGrid({
             {/* View All Works button */}
             <button
               onClick={() => selectCategory("all")}
-              className={`rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer ${
+              className={`group rounded-full px-5 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer inline-flex items-center gap-2 ${
                 catFilter === "all"
                   ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))] font-semibold shadow-lg shadow-[hsl(var(--echo-accent))]/25 scale-[1.02]"
                   : "border border-border text-muted-foreground hover:border-[hsl(var(--echo-accent))]/60 hover:text-bright"
               }`}
             >
-              {isAr ? "جميع الأعمال" : "All Works"}
+              <span>{isAr ? "جميع الأعمال" : "All Works"}</span>
+              {items.length > 0 && (
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
+                    catFilter === "all"
+                      ? "bg-black/20 text-inherit font-bold"
+                      : "bg-muted text-muted-foreground group-hover:text-bright"
+                  }`}
+                >
+                  {items.length}
+                </span>
+              )}
             </button>
           </FadeIn>
 
-          {/* Subcategories Selector Bar (shown when category is selected and has subcategories) */}
+          {/* Subcategories Selector Bar (shown when category is selected and has subcategories or unassigned items) */}
           <AnimatePresence mode="wait">
-            {activeSubs.length > 0 && (
+            {catFilter && catFilter !== "all" && (activeSubs.length > 0 || uncategorizedSubCount > 0) && (
               <motion.div
-                initial={{ opacity: 0, y: -10 }}
+                key={catFilter}
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
                 className="mb-10 flex flex-wrap items-center gap-2 border-y border-border/40 py-3.5"
               >
                 <span className="text-xs text-muted-foreground font-medium me-1">
@@ -154,18 +210,27 @@ export function PortfolioGrid({
                 </span>
                 <button
                   onClick={() => setSubFilter("all")}
-                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer ${
+                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer inline-flex items-center gap-1.5 ${
                     subFilter === "all"
-                      ? "bg-bright text-[hsl(var(--echo-base))] font-semibold"
+                      ? "bg-white text-black font-semibold shadow-sm"
                       : "border border-border/70 text-muted-foreground hover:text-bright hover:border-border"
                   }`}
                 >
-                  {isAr ? "الكل" : "All"}
+                  <span>{isAr ? "الكل" : "All"}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      subFilter === "all"
+                        ? "bg-black/15 text-black font-bold"
+                        : "bg-muted/70 text-muted-foreground"
+                    }`}
+                  >
+                    {getCategoryCount(catFilter)}
+                  </span>
                 </button>
                 {activeSubs.map((sub) => {
                   const isSubSelected = subFilter === sub.id;
                   const subCount = items.filter(
-                    (i) => i.subcategory_id === sub.id
+                    (i) => itemMatchesCategory(i, catFilter) && i.subcategory_id === sub.id
                   ).length;
 
                   return (
@@ -174,7 +239,7 @@ export function PortfolioGrid({
                       onClick={() => setSubFilter(sub.id)}
                       className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer inline-flex items-center gap-1.5 ${
                         isSubSelected
-                          ? "bg-bright text-[hsl(var(--echo-base))] font-semibold"
+                          ? "bg-white text-black font-semibold shadow-sm"
                           : "border border-border/70 text-muted-foreground hover:text-bright hover:border-border"
                       }`}
                     >
@@ -183,7 +248,7 @@ export function PortfolioGrid({
                         <span
                           className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                             isSubSelected
-                              ? "bg-black/20 text-inherit"
+                              ? "bg-black/15 text-black font-bold"
                               : "bg-muted/70 text-muted-foreground"
                           }`}
                         >
@@ -193,6 +258,28 @@ export function PortfolioGrid({
                     </button>
                   );
                 })}
+                {/* Other/General filter pill if some items in this category lack subcategory */}
+                {uncategorizedSubCount > 0 && activeSubs.length > 0 && (
+                  <button
+                    onClick={() => setSubFilter("none")}
+                    className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer inline-flex items-center gap-1.5 ${
+                      subFilter === "none"
+                        ? "bg-white text-black font-semibold shadow-sm"
+                        : "border border-border/70 text-muted-foreground hover:text-bright hover:border-border"
+                    }`}
+                  >
+                    <span>{isAr ? "أخرى / عام" : "Other / General"}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                        subFilter === "none"
+                          ? "bg-black/15 text-black font-bold"
+                          : "bg-muted/70 text-muted-foreground"
+                      }`}
+                    >
+                      {uncategorizedSubCount}
+                    </span>
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -227,7 +314,7 @@ export function PortfolioGrid({
               {/* Quick Interactive Category Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
                 {categories.map((cat, idx) => {
-                  const count = getCategoryCount(cat.id, cat.name_en);
+                  const count = getCategoryCount(cat.id);
 
                   return (
                     <motion.button
@@ -273,51 +360,75 @@ export function PortfolioGrid({
                   ? "جرب اختيار فئة أخرى أو استعراض جميع الأعمال"
                   : "Try selecting another category or view all works"}
               </p>
-              <button
-                onClick={() => selectCategory("all")}
-                className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm text-muted-foreground hover:text-bright hover:border-[hsl(var(--echo-accent))] transition-colors cursor-pointer"
-              >
-                {isAr ? "عرض جميع الأعمال" : "View all works"}
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => selectCategory("all")}
+                  className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2 text-sm text-muted-foreground hover:text-bright hover:border-[hsl(var(--echo-accent))] transition-colors cursor-pointer"
+                >
+                  {isAr ? "عرض جميع الأعمال" : "View all works"}
+                </button>
+                <button
+                  onClick={() => {
+                    setCatFilter(null);
+                    setSubFilter("all");
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-muted/60 px-5 py-2 text-sm text-muted-foreground hover:text-bright hover:bg-muted transition-colors cursor-pointer"
+                >
+                  <FolderOpen size={14} />
+                  {isAr ? "الرجوع لاختيار الفئات" : "Back to categories"}
+                </button>
+              </div>
             </div>
           ) : (
             /* Work items Grid */
-            <StaggerContainer className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((item) => (
-                <StaggerItem key={item.id}>
-                  <ScaleOnHover>
-                    <div
-                      onClick={() => setLightbox(item)}
-                      className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface cursor-pointer"
-                    >
-                      {item.thumbnail_url || item.media_type === "image" ? (
-                        <Image
-                          src={item.thumbnail_url || item.media_url}
-                          alt={isAr ? item.title_ar : item.title_en}
-                          fill
-                          className="object-cover transition-transform [transition-duration:900ms] ease-out group-hover:scale-105"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 grid place-items-center bg-surface">
-                          <span className="grid h-16 w-16 place-items-center rounded-full border border-white/20 bg-black/40 backdrop-blur transition-transform duration-500 group-hover:scale-110">
-                            <Play size={22} className="ms-0.5 text-white" fill="currentColor" />
-                          </span>
+            <StaggerContainer
+              key={`${catFilter}-${subFilter}`}
+              className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {filtered.map((item) => {
+                const title = getItemTitle(item);
+                const desc = getItemDesc(item);
+
+                return (
+                  <StaggerItem key={item.id}>
+                    <ScaleOnHover>
+                      <div
+                        onClick={() => setLightbox(item)}
+                        className="group relative aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface cursor-pointer"
+                      >
+                        {item.thumbnail_url || item.media_type === "image" ? (
+                          <Image
+                            src={item.thumbnail_url || item.media_url}
+                            alt={title || "Portfolio Item"}
+                            fill
+                            className="object-cover transition-transform [transition-duration:900ms] ease-out group-hover:scale-105"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 grid place-items-center bg-surface">
+                            <span className="grid h-16 w-16 place-items-center rounded-full border border-white/20 bg-black/40 backdrop-blur transition-transform duration-500 group-hover:scale-110">
+                              <Play size={22} className="ms-0.5 text-white" fill="currentColor" />
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                        <div className="absolute inset-x-0 bottom-0 p-7">
+                          {title && (
+                            <h3 className="text-xl font-semibold text-white">
+                              {title}
+                            </h3>
+                          )}
+                          {desc && (
+                            <p className="text-white/70 text-sm mt-1 line-clamp-2">
+                              {desc}
+                            </p>
+                          )}
                         </div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-7">
-                        <h3 className="text-xl font-semibold text-white">
-                          {isAr ? item.title_ar : item.title_en}
-                        </h3>
-                        <p className="text-white/70 text-sm mt-1 line-clamp-2">
-                          {isAr ? item.description_ar : item.description_en}
-                        </p>
                       </div>
-                    </div>
-                  </ScaleOnHover>
-                </StaggerItem>
-              ))}
+                    </ScaleOnHover>
+                  </StaggerItem>
+                );
+              })}
             </StaggerContainer>
           )}
         </div>
@@ -357,20 +468,26 @@ export function PortfolioGrid({
               ) : (
                 <Image
                   src={lightbox.media_url}
-                  alt={isAr ? lightbox.title_ar : lightbox.title_en}
+                  alt={getItemTitle(lightbox) || "Portfolio"}
                   width={1200}
                   height={800}
                   className="w-full h-auto max-h-[80vh] object-contain rounded-xl"
                 />
               )}
-              <div className="mt-4 text-white">
-                <h3 className="text-xl font-semibold">
-                  {isAr ? lightbox.title_ar : lightbox.title_en}
-                </h3>
-                <p className="text-white/70 mt-1">
-                  {isAr ? lightbox.description_ar : lightbox.description_en}
-                </p>
-              </div>
+              {(getItemTitle(lightbox) || getItemDesc(lightbox)) && (
+                <div className="mt-4 text-white">
+                  {getItemTitle(lightbox) && (
+                    <h3 className="text-xl font-semibold">
+                      {getItemTitle(lightbox)}
+                    </h3>
+                  )}
+                  {getItemDesc(lightbox) && (
+                    <p className="text-white/70 mt-1">
+                      {getItemDesc(lightbox)}
+                    </p>
+                  )}
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

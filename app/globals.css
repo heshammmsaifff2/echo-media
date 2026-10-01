@@ -145,6 +145,10 @@
     color: hsl(var(--echo-bright));
   }
 
+  .bg-bright {
+    background-color: hsl(var(--echo-bright));
+  }
+
   .text-accent-brand {
     color: hsl(var(--echo-accent));
   }
