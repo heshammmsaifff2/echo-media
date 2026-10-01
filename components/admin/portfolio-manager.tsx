@@ -73,6 +73,10 @@ export function PortfolioManager({
   const { isAr } = useI18n();
 
   useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  useEffect(() => {
     if (mediaFile && (mediaFile.type.startsWith("video/") || form.media_type === "video")) {
       const url = URL.createObjectURL(mediaFile);
       setVideoPreviewUrl(url);
@@ -115,11 +119,25 @@ export function PortfolioManager({
 
   const openEdit = (item: PortfolioItem) => {
     setEditing(item);
+    let catId = item.category_id ?? "";
+    if (!catId && item.category) {
+      const matched = categories.find(
+        (c) =>
+          c.name_en.toLowerCase() === item.category?.toLowerCase() ||
+          c.name_ar === item.category
+      );
+      if (matched) catId = matched.id;
+    }
+
     setForm({
-      title_en: item.title_en, title_ar: item.title_ar,
-      description_en: item.description_en, description_ar: item.description_ar,
-      category_id: item.category_id ?? "", subcategory_id: item.subcategory_id ?? "",
-      media_type: item.media_type, is_featured: item.is_featured,
+      title_en: item.title_en,
+      title_ar: item.title_ar,
+      description_en: item.description_en,
+      description_ar: item.description_ar,
+      category_id: catId,
+      subcategory_id: item.subcategory_id ?? "",
+      media_type: item.media_type,
+      is_featured: item.is_featured,
     });
     setMediaFile(null);
     setThumbFile(null);
@@ -241,19 +259,43 @@ export function PortfolioManager({
         return;
       }
 
+      const categoryObj = categories.find((c) => c.id === form.category_id);
+      const categoryName = categoryObj ? categoryObj.name_en.toLowerCase() : null;
+
       const payload = {
-        title_en: form.title_en, title_ar: form.title_ar,
-        description_en: form.description_en, description_ar: form.description_ar,
-        category_id: form.category_id || null, subcategory_id: form.subcategory_id || null,
+        title_en: form.title_en,
+        title_ar: form.title_ar,
+        description_en: form.description_en,
+        description_ar: form.description_ar,
+        category: categoryName,
+        category_id: form.category_id || null,
+        subcategory_id: form.subcategory_id || null,
         media_type: form.media_type,
-        media_url, thumbnail_url, is_featured: form.is_featured,
+        media_url,
+        thumbnail_url,
+        is_featured: form.is_featured,
         order_index: editing?.order_index ?? items.length,
       };
 
       if (editing) {
-        await supabase.from("portfolio_items").update(payload).eq("id", editing.id);
+        const { error } = await supabase
+          .from("portfolio_items")
+          .update(payload)
+          .eq("id", editing.id);
+        if (error) throw error;
+        setItems((prev) =>
+          prev.map((i) => (i.id === editing.id ? { ...i, ...payload } : i))
+        );
       } else {
-        await supabase.from("portfolio_items").insert(payload);
+        const { data, error } = await supabase
+          .from("portfolio_items")
+          .insert(payload)
+          .select()
+          .single();
+        if (error) throw error;
+        if (data) {
+          setItems((prev) => [...prev, data as PortfolioItem]);
+        }
       }
 
       setDialogOpen(false);
@@ -356,11 +398,21 @@ export function PortfolioManager({
                   <Select
                     value={form.subcategory_id || "none"}
                     onValueChange={(v) => setForm({ ...form, subcategory_id: v === "none" ? "" : v })}
-                    disabled={catSubs.length === 0}
+                    disabled={!form.category_id || catSubs.length === 0}
                   >
-                    <SelectTrigger><SelectValue placeholder={isAr ? "بدون" : "None"} /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          !form.category_id
+                            ? (isAr ? "اختر تصنيفاً أولاً" : "Select category first")
+                            : catSubs.length === 0
+                            ? (isAr ? "لا توجد فروع لهذا التصنيف" : "No subcategories")
+                            : (isAr ? "بدون فرع" : "None")
+                        }
+                      />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">{isAr ? "بدون" : "None"}</SelectItem>
+                      <SelectItem value="none">{isAr ? "بدون فرع" : "None"}</SelectItem>
                       {catSubs.map((s) => (
                         <SelectItem key={s.id} value={s.id}>{isAr ? s.name_ar || s.name_en : s.name_en || s.name_ar}</SelectItem>
                       ))}
@@ -658,7 +710,7 @@ export function PortfolioManager({
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{isAr ? item.title_ar : item.title_en}</p>
                   <p className="text-xs text-muted-foreground">
-                    {catName(item.category_id) || (isAr ? "بدون تصنيف" : "Uncategorized")}
+                    {catName(item.category_id) || (item.category ? (categories.find(c => c.name_en.toLowerCase() === item.category?.toLowerCase() || c.name_ar === item.category)?.name_ar || item.category) : "") || (isAr ? "بدون تصنيف" : "Uncategorized")}
                     {item.subcategory_id ? ` · ${subName(item.subcategory_id)}` : ""}
                     {" · "}
                     {item.media_type === "video" ? (isAr ? "فيديو" : "Video") : (isAr ? "صورة" : "Image")}
