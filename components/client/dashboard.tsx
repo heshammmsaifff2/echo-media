@@ -481,8 +481,8 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                       {isAr ? "حوّل عبر فودافون كاش أو إنستاباي ثم ارفع الإيصال. سيؤكّد الأدمن المبلغ." : "Transfer via Vodafone Cash or InstaPay, then upload the receipt. The admin will confirm the amount."}
                     </p>
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-lg bg-card p-3 border border-border/50"><p className="font-medium">Vodafone Cash</p><p className="text-muted-foreground">010 XXXX XXXX</p></div>
-                      <div className="rounded-lg bg-card p-3 border border-border/50"><p className="font-medium">InstaPay</p><p className="text-muted-foreground">echo@instapay</p></div>
+                      <div className="rounded-lg bg-card p-3 border border-border/50"><p className="font-medium">Vodafone Cash</p><p className="text-muted-foreground">01097519765</p></div>
+                      <div className="rounded-lg bg-card p-3 border border-border/50"><p className="font-medium">InstaPay</p><p className="text-muted-foreground">mahmoudmaky1@instapay</p></div>
                     </div>
                     <div className="grid gap-2">
                       <Label>{isAr ? `المبلغ (${currency}) — اختياري` : `Amount (${currency}) — optional`}</Label>

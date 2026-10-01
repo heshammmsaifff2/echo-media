@@ -43,8 +43,9 @@ export default async function Home({ params }: Params) {
       />
 
       <HeroSection />
-      <LightingSection />
       <ShowreelSection />
+      <LightingSection />
+      
       <FeaturedWork items={featured || []} categories={catsRes.data || []} />
       <LogoMoment />
       <ClientsSection />
