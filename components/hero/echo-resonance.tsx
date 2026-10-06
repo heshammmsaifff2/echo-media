@@ -64,7 +64,7 @@ const RIBBON_FRAGMENT = /* glsl */ `
 
     // Highlights on wave crests
     float crest = smoothstep(0.4, 1.2, abs(vWave)) * 0.3;
-    col += vec3(crest * 0.5, crest * 0.7, crest * 1.0);
+    col = mix(col, vec3(1.0), crest);
 
     float alpha = core * edgeX * uOpacity;
     gl_FragColor = vec4(col, alpha);
@@ -152,8 +152,8 @@ export default function EchoResonance({ className }: { className?: string }) {
         freq: 0.22,
         amp: 1.1,
         phase: 0.0,
-        c1: new THREE.Color("#38bdf8"), // Electric Cyan
-        c2: new THREE.Color("#6366f1"), // Royal Blue
+        c1: new THREE.Color("#5b7cff"), // Echo Blue
+        c2: new THREE.Color("#a6a6a6"), // Soft Gray
         opacity: 0.38,
       },
       {
@@ -165,8 +165,8 @@ export default function EchoResonance({ className }: { className?: string }) {
         freq: 0.18,
         amp: 1.3,
         phase: 1.9,
-        c1: new THREE.Color("#6366f1"), // Royal Blue
-        c2: new THREE.Color("#a855f7"), // Radiant Purple
+        c1: new THREE.Color("#5b7cff"), // Echo Blue
+        c2: new THREE.Color("#a6a6a6"), // Soft Gray
         opacity: 0.34,
       },
       {
@@ -178,8 +178,8 @@ export default function EchoResonance({ className }: { className?: string }) {
         freq: 0.24,
         amp: 1.0,
         phase: 3.4,
-        c1: new THREE.Color("#0ea5e9"), // Sky Blue
-        c2: new THREE.Color("#818cf8"), // Indigo
+        c1: new THREE.Color("#5b7cff"), // Echo Blue
+        c2: new THREE.Color("#a6a6a6"), // Soft Gray
         opacity: 0.30,
       },
       {
@@ -191,8 +191,8 @@ export default function EchoResonance({ className }: { className?: string }) {
         freq: 0.15,
         amp: 1.45,
         phase: 4.8,
-        c1: new THREE.Color("#a855f7"), // Violet
-        c2: new THREE.Color("#38bdf8"), // Cyan
+        c1: new THREE.Color("#5b7cff"), // Echo Blue
+        c2: new THREE.Color("#a6a6a6"), // Soft Gray
         opacity: 0.25,
       },
       {
@@ -204,8 +204,8 @@ export default function EchoResonance({ className }: { className?: string }) {
         freq: 0.28,
         amp: 0.9,
         phase: 2.2,
-        c1: new THREE.Color("#c084fc"), // Lavender
-        c2: new THREE.Color("#60a5fa"), // Light Blue
+        c1: new THREE.Color("#5b7cff"), // Echo Blue
+        c2: new THREE.Color("#a6a6a6"), // Soft Gray
         opacity: 0.22,
       },
       {
@@ -217,8 +217,8 @@ export default function EchoResonance({ className }: { className?: string }) {
         freq: 0.13,
         amp: 1.6,
         phase: 5.7,
-        c1: new THREE.Color("#3b82f6"), // Blue
-        c2: new THREE.Color("#8b5cf6"), // Deep Violet
+        c1: new THREE.Color("#5b7cff"), // Echo Blue
+        c2: new THREE.Color("#a6a6a6"), // Soft Gray
         opacity: 0.18,
       },
     ];

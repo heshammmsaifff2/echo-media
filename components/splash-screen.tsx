@@ -118,7 +118,7 @@ function SplashScreenInner() {
             scale: 1.015,
             transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
           }}
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-[#070707] selection:bg-none select-none pointer-events-auto cursor-wait"
+          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-background selection:bg-none select-none pointer-events-auto cursor-wait"
         >
           {/* Subtle Ambient Radial Glow */}
           <div

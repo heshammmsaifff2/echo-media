@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useEffect, useState } from "react";
+import { useRef, useMemo, useEffect, useState, type RefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -25,8 +25,8 @@ const VERTEX = /* glsl */ `
     float dist = length(pos.xz);
 
     // Primary echo pulse travelling outward, plus a finer second harmonic.
-    float pulse   = sin(dist * 1.9 - uTime * 1.25) * 0.52;
-    float harmony = sin(dist * 4.6 - uTime * 2.05) * 0.16;
+    float pulse   = sin(dist * 1.65 - uTime * 0.95) * 0.65;
+    float harmony = sin(dist * 3.3 - uTime * 1.4) * 0.12;
 
     // A ripple that follows the cursor and decays with distance.
     vec2  pointer = uPointer * 7.0;
@@ -65,14 +65,14 @@ const FRAGMENT = /* glsl */ `
     vec2 uv = gl_PointCoord - 0.5;
     float d = length(uv);
     if (d > 0.5) discard;
-    float alpha = smoothstep(0.5, 0.1, d);
+    float alpha = 1.0 - smoothstep(0.1, 0.5, d);
 
     vec3 color = mix(uBase, uAccent, vGlow);
     gl_FragColor = vec4(color, alpha * vFade * (0.45 + vGlow * 0.55));
   }
 `;
 
-function WaveField({ reduced }: { reduced: boolean }) {
+function WaveField({ reduced, target }: { reduced: boolean; target: RefObject<THREE.Vector2> }) {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const pointer = useRef(new THREE.Vector2(0, 0));
 
@@ -103,21 +103,21 @@ function WaveField({ reduced }: { reduced: boolean }) {
       uTime: { value: 0 },
       uPointer: { value: new THREE.Vector2(0, 0) },
       uIntensity: { value: 1 },
-      uBase: { value: new THREE.Color("#4a5488") },
-      uAccent: { value: new THREE.Color("#7d97ff") },
+      uBase: { value: new THREE.Color("#303030") },
+      uAccent: { value: new THREE.Color("#5b7cff") },
     }),
     []
   );
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     const mat = materialRef.current;
     if (!mat) return;
 
     // Frozen but still rendered: the field reads as a still image.
-    if (!reduced) mat.uniforms.uTime.value += delta;
+    if (!reduced) mat.uniforms.uTime.value += Math.min(delta, 0.05);
 
     // Ease the pointer so the ripple trails the cursor instead of snapping.
-    pointer.current.lerp(state.pointer, 0.045);
+    if (!reduced) pointer.current.lerp(target.current, 1 - Math.exp(-3 * delta));
     mat.uniforms.uPointer.value.copy(pointer.current);
   });
 
@@ -152,6 +152,7 @@ export default function EchoField({ className }: { className?: string }) {
   const [reduced, setReduced] = useState(false);
   const [visible, setVisible] = useState(true);
   const hostRef = useRef<HTMLDivElement>(null);
+  const target = useRef(new THREE.Vector2(0, 0));
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -159,6 +160,26 @@ export default function EchoField({ className }: { className?: string }) {
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  // Read pointer coordinates from the hero so links remain fully interactive.
+  useEffect(() => {
+    const hero = hostRef.current?.parentElement;
+    if (!hero) return;
+    const move = (event: PointerEvent) => {
+      const rect = hero.getBoundingClientRect();
+      target.current.set(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1
+      );
+    };
+    const reset = () => target.current.set(0, 0);
+    hero.addEventListener("pointermove", move, { passive: true });
+    hero.addEventListener("pointerleave", reset);
+    return () => {
+      hero.removeEventListener("pointermove", move);
+      hero.removeEventListener("pointerleave", reset);
+    };
   }, []);
 
   // Stop rendering entirely once the hero scrolls away — no wasted GPU.
@@ -178,11 +199,11 @@ export default function EchoField({ className }: { className?: string }) {
       <Canvas
         camera={{ position: [0, 4.2, 11], fov: 42 }}
         dpr={[1, 1.75]}
-        frameloop={visible ? "always" : "never"}
+        frameloop={!visible ? "never" : reduced ? "demand" : "always"}
         gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
         style={{ pointerEvents: "none" }}
       >
-        <WaveField reduced={reduced} />
+        <WaveField reduced={reduced} target={target} />
       </Canvas>
     </div>
   );

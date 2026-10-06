@@ -6,11 +6,11 @@
  * Echo Media Production — design tokens.
  *
  * Dark-only by design: this is a cinematic brand and the palette is built from
- * five dark values plus a single accent. :root and .dark carry identical values
+ * seven exact brand colors. :root and .dark carry identical values
  * so a stray theme class can never wash the site out.
  *
  *   #0a0a0a  base          #a6a6a6  muted text
- *   #181818  surface       #f2f2f2  text
+ *   #181818  surface       #f2f2f0  text
  *   #303030  line          #ffffff  emphasis
  *   #5b7cff  accent
  */
@@ -22,21 +22,21 @@
     --font-ar: var(--font-tajawal), "Tajawal", system-ui, sans-serif;
 
     /* Raw brand values */
-    --echo-base: 0 0% 3.9%;
-    --echo-surface: 0 0% 9.4%;
-    --echo-line: 0 0% 18.8%;
-    --echo-muted: 0 0% 65.1%;
-    --echo-text: 0 0% 94.9%;
-    --echo-bright: 0 0% 100%;
-    --echo-accent: 228 100% 68%;
+    --echo-base: 0.0000000000 0.0000000000% 3.9215686275%;
+    --echo-surface: 0.0000000000 0.0000000000% 9.4117647059%;
+    --echo-line: 0.0000000000 0.0000000000% 18.8235294118%;
+    --echo-muted: 0.0000000000 0.0000000000% 65.0980392157%;
+    --echo-text: 60.0000000000 7.1428571429% 94.5098039216%;
+    --echo-bright: 0.0000000000 0.0000000000% 100.0000000000%;
+    --echo-accent: 227.9268292683 100.0000000000% 67.8431372549%;
 
     /* Semantic tokens (shadcn contract) */
     --background: var(--echo-base);
-    --foreground: var(--echo-text);
+    --foreground: var(--echo-bright);
     --card: var(--echo-surface);
-    --card-foreground: var(--echo-text);
+    --card-foreground: var(--echo-bright);
     --popover: var(--echo-surface);
-    --popover-foreground: var(--echo-text);
+    --popover-foreground: var(--echo-bright);
     --primary: var(--echo-accent);
     --primary-foreground: var(--echo-base);
     --secondary: var(--echo-surface);
@@ -87,6 +87,49 @@
 }
 
 @layer components {
+  .content-editor input:not([type="file"]) {
+    min-height: 3.5rem;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+  }
+
+  .content-editor textarea {
+    min-height: 12rem;
+    padding: 1rem;
+    font-size: 1rem;
+    line-height: 1.75;
+    resize: vertical;
+  }
+
+
+  .hero-stage {
+    background-color: hsl(var(--echo-base));
+    background-image: radial-gradient(ellipse at 85% 85%, hsl(var(--echo-accent) / 0.4), transparent 65%);
+  }
+
+  .hero-wavefield {
+    opacity: 0.8;
+    mask-image: linear-gradient(to bottom, transparent 10%, black 70%);
+  }
+
+  .hero-reading-shade {
+    background: linear-gradient(90deg, hsl(var(--echo-base) / 0.85), hsl(var(--echo-base) / 0.4) 65%, transparent);
+  }
+
+  [dir="rtl"] .hero-reading-shade {
+    background: linear-gradient(270deg, hsl(var(--echo-base) / 0.85), hsl(var(--echo-base) / 0.4) 65%, transparent);
+  }
+
+  .hero-headline {
+    text-shadow: 0 4px 32px hsl(var(--echo-base) / 0.65);
+  }
+
+  .hero-description {
+    color: hsl(var(--echo-text));
+    text-shadow: 0 2px 12px hsl(var(--echo-base) / 0.8);
+  }
+
+
   /*
    * Display type. Huge, tightly tracked, optically balanced — the core of the
    * look. Arabic needs looser tracking and more line-height than Latin, so the
@@ -141,6 +184,14 @@
 }
 
 @layer utilities {
+  /* Poster-inspired glow, using only Echo Blue over Echo Black. */
+  .echo-blue-gradient {
+    background-color: hsl(var(--echo-base));
+    background-image:
+      radial-gradient(ellipse at 90% 100%, hsl(var(--echo-accent) / 0.85), transparent 65%),
+      linear-gradient(180deg, hsl(var(--echo-base)) 10%, hsl(var(--echo-accent) / 0.28) 100%);
+  }
+
   .text-bright {
     color: hsl(var(--echo-bright));
   }

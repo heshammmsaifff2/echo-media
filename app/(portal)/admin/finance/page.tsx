@@ -11,7 +11,7 @@ export default async function AdminFinancePage() {
   const { data } = await supabase
     .from("client_orders")
     .select(
-      "id, project_title, total_amount, created_at, profiles!client_orders_client_id_fkey(full_name, email), order_payments(*)"
+      "id, project_title, total_amount, created_at, cancelled_at, profiles!client_orders_client_id_fkey(full_name, email), order_payments(*)"
     )
     .order("created_at", { ascending: false });
 

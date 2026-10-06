@@ -6,12 +6,12 @@ export default async function AdminDashboard() {
 
   const [portfolioRes, ordersRes, clientsRes] = await Promise.all([
     supabase.from("portfolio_items").select("id", { count: "exact", head: true }),
-    supabase.from("client_orders").select("id, total_amount, deposit_paid, payment_status", { count: "exact" }),
+    supabase.from("client_orders").select("id, total_amount, deposit_paid, payment_status, cancelled_at", { count: "exact" }),
     supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "client"),
   ]);
 
-  const totalRevenue = (ordersRes.data || []).reduce((sum, o) => sum + Number(o.total_amount), 0);
-  const pendingReceipts = (ordersRes.data || []).filter((o) => o.payment_status === "receipt_uploaded").length;
+  const totalRevenue = (ordersRes.data || []).reduce((sum, o) => sum + (o.cancelled_at ? 0 : Number(o.total_amount)), 0);
+  const pendingReceipts = (ordersRes.data || []).filter((o) => !o.cancelled_at && o.payment_status === "receipt_uploaded").length;
 
   return (
     <AdminStats

@@ -9,7 +9,7 @@ import {
   Parallax,
   StaggerContainer,
   StaggerItem,
-  LineRevealInView,
+  ScrollTextReveal,
 } from "@/components/motion";
 
 /** Cloudinary videos can serve a still frame as a poster by swapping the ext. */
@@ -108,15 +108,9 @@ export function ShowreelSection() {
           <span className="rule" />
         </div>
 
-        <h2 className="display-lg max-w-4xl text-bright">
-          <LineRevealInView lines={[pick(field("heading", style.heading))]} />
-        </h2>
+        <ScrollTextReveal text={pick(field("heading", style.heading))} className="max-w-[1280px] text-[clamp(2rem,4.5vw,4.5rem)] font-bold leading-[1.25] tracking-tight" />
 
-        <FadeIn delay={0.1}>
-          <p className="mt-8 max-w-xl text-lg text-muted-foreground">
-            {pick(field("body", style.body))}
-          </p>
-        </FadeIn>
+
       </div>
 
       {/* Cinematic frame — aligned with the section, not edge-to-edge. */}
@@ -142,6 +136,12 @@ export function ShowreelSection() {
           </FadeIn>
         </div>
       )}
+
+      <div className="mx-auto mt-8 max-w-[1400px] px-6 sm:px-10">
+        <FadeIn delay={0.1}>
+          <p className="max-w-3xl text-lg leading-relaxed text-muted-foreground">{pick(field("body", style.body))}</p>
+        </FadeIn>
+      </div>
 
       {/* The six — clean oversized type, no boxes. */}
       <div className="mx-auto mt-20 max-w-[1400px] px-6 sm:px-10">

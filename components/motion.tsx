@@ -222,4 +222,27 @@ export function ScaleOnHover({
   );
 }
 
+/** Word-by-word emphasis follows the heading's actual scroll position. */
+export function ScrollTextReveal({ text, className }: { text: string; className?: string }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  const reduced = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 85%", "end 45%"] });
+  const words = text.trim().split(/\s+/);
+  return (
+    <h2 ref={ref} className={className}>
+      <span className="sr-only">{text}</span>
+      <span aria-hidden="true">
+        {words.map((word, index) => <ScrollWord key={index} word={word} progress={scrollYProgress} start={index / words.length} end={(index + 1) / words.length} reduced={!!reduced} />)}
+      </span>
+    </h2>
+  );
+}
+
+function ScrollWord({ word, progress, start, end, reduced }: {
+  word: string; progress: import("framer-motion").MotionValue<number>; start: number; end: number; reduced: boolean;
+}) {
+  const opacity = useTransform(progress, [start, end], [0.35, 1]);
+  return <><motion.span className="inline-block text-bright" style={reduced ? undefined : { opacity }}>{word}</motion.span>{" "}</>;
+}
+
 export { motion, EASE };

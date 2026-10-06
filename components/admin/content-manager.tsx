@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadToCloudinary } from "@/lib/upload";
 import { useI18n } from "@/lib/i18n";
@@ -9,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pencil, Plus, Trash2, Loader2, ImageIcon, Film, Type } from "lucide-react";
 
@@ -59,32 +60,26 @@ function initFields(def: SectionDef, row?: SectionRow): Record<string, FieldVal>
   return out;
 }
 
-function initBg(row?: SectionRow): Bg {
+function initBg(row?: SectionRow, def?: SectionDef): Bg {
   return {
-    type: (row?.bg_type as Bg["type"]) ?? "none",
-    url: row?.bg_url ?? "",
-    poster: row?.bg_poster_url ?? "",
+    type: (row?.bg_type as Bg["type"]) ?? def?.defaultBg.type ?? "none",
+    url: row?.bg_url ?? def?.defaultBg.url ?? "",
+    poster: row?.bg_poster_url ?? def?.defaultBg.poster ?? "",
     publicId: row?.bg_public_id ?? "",
   };
 }
 
-export function ContentManager({ initialRows }: { initialRows: Record<string, SectionRow> }) {
+export function ContentManager({ initialRows, editingSlug }: { initialRows: Record<string, SectionRow>; editingSlug?: string }) {
+  const router = useRouter();
   const { isAr } = useI18n();
   const t = (en: string, ar: string) => (isAr ? ar : en);
 
   const [rows, setRows] = useState(initialRows);
-  const [editing, setEditing] = useState<SectionDef | null>(null);
-  const [fields, setFields] = useState<Record<string, FieldVal>>({});
-  const [bg, setBg] = useState<Bg>(initBg());
+  const editing = SECTIONS.find((section) => section.slug === editingSlug) ?? null;
+  const [fields, setFields] = useState<Record<string, FieldVal>>(() => editing ? initFields(editing, initialRows[editing.slug]) : {});
+  const [bg, setBg] = useState<Bg>(() => initBg(editing ? initialRows[editing.slug] : undefined, editing ?? undefined));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"media" | "poster" | null>(null);
-
-  const openEdit = (def: SectionDef) => {
-    const row = rows[def.slug];
-    setEditing(def);
-    setFields(initFields(def, row));
-    setBg(initBg(row));
-  };
 
   const setField = (id: string, val: FieldVal) => setFields((f) => ({ ...f, [id]: val }));
 
@@ -147,7 +142,8 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
       if (error) throw error;
 
       setRows((r) => ({ ...r, [editing.slug]: payload as unknown as SectionRow }));
-      setEditing(null);
+      router.push("/admin/content");
+      router.refresh();
     } catch (err) {
       alert(err instanceof Error ? err.message : t("Save failed", "فشل الحفظ"));
     } finally {
@@ -158,7 +154,8 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
   const pages = ["home", "studio", "founder", "global"] as const;
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-[1400px]">
+      {!editing && <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold">{t("Site Content", "محتوى الموقع")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -209,8 +206,8 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
                             : t("Text only — no background", "نص فقط — بدون خلفية")}
                         </p>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(def)} className="cursor-pointer">
-                        <Pencil size={16} />
+                      <Button variant="outline" asChild className="gap-2">
+                        <Link href={`/admin/content/${def.slug}`}><Pencil size={16} />{t("Edit", "تعديل")}</Link>
                       </Button>
                     </CardContent>
                   </Card>
@@ -221,19 +218,22 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
         );
       })}
 
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editing ? (isAr ? editing.label.ar : editing.label.en) : ""}
-            </DialogTitle>
-          </DialogHeader>
-
+      </>}
+      {editing && <section className="content-editor">
+        <div className="sticky top-0 z-20 mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-background/95 p-4 backdrop-blur">
+          <div>
+            <Link href="/admin/content" className="text-sm text-primary hover:underline">{t("Back to content", "العودة للمحتوى")}</Link>
+            <h1 className="mt-2 text-2xl font-bold">{isAr ? editing.label.ar : editing.label.en}</h1>
+          </div>
+          <Button onClick={handleSave} disabled={saving || uploading !== null}>
+            {saving && <Loader2 size={16} className="me-2 animate-spin" />}{t("Save changes", "حفظ التعديلات")}
+          </Button>
+        </div>
           {editing && (
-            <div className="grid gap-6 py-2">
+            <div className="grid gap-8 py-2">
               {/* Background media — only for sections that render one. */}
               {editing.media && (
-                <div className="grid gap-3 rounded-lg border border-border/60 p-4">
+                <div className="grid gap-3 rounded-xl border border-border/60 p-6">
                 <Label className="text-sm font-semibold">
                   {t("Background", "الخلفية")}
                 </Label>
@@ -341,8 +341,7 @@ export function ContentManager({ initialRows }: { initialRows: Record<string, Se
               </Button>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+      </section>}
     </div>
   );
 }
@@ -363,7 +362,7 @@ function TextField({
   if (long) {
     return (
       <Textarea
-        rows={3}
+        rows={7}
         value={value}
         dir={dir}
         placeholder={placeholder}
@@ -462,9 +461,9 @@ function FieldEditor({
     const v = value as BiVal;
     const long = field.type === "biLong";
     return (
-      <div className="grid gap-2">
-        <Label className="text-sm font-medium">{label}</Label>
-        <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-4 rounded-xl border border-border/50 bg-card/50 p-5 sm:p-6">
+        <Label className="text-base font-semibold">{label}</Label>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <TextField long={long} value={v.en} placeholder="English" onChange={(s) => onChange({ ...v, en: s })} />
           <TextField long={long} value={v.ar} dir="rtl" placeholder="العربية" onChange={(s) => onChange({ ...v, ar: s })} />
         </div>
@@ -475,17 +474,17 @@ function FieldEditor({
   if (field.type === "biList") {
     const v = value as ListVal;
     return (
-      <div className="grid gap-2">
-        <Label className="text-sm font-medium">{label}</Label>
-        <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-4 rounded-xl border border-border/50 bg-card/50 p-5 sm:p-6">
+        <Label className="text-base font-semibold">{label}</Label>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Textarea
-            rows={5}
+            rows={8}
             value={(v.en ?? []).join("\n")}
             onChange={(e) => onChange({ ...v, en: e.target.value.split("\n") })}
             placeholder={"One per line"}
           />
           <Textarea
-            rows={5}
+            rows={8}
             dir="rtl"
             value={(v.ar ?? []).join("\n")}
             onChange={(e) => onChange({ ...v, ar: e.target.value.split("\n") })}
@@ -526,7 +525,7 @@ function FieldEditor({
             </Button>
           </div>
           {subs.map((sf) => (
-            <div key={sf.id} className="grid grid-cols-2 gap-2">
+            <div key={sf.id} className="grid grid-cols-1 gap-5 lg:grid-cols-2">
               <TextField
                 long={sf.long}
                 value={v.en?.[i]?.[sf.id] ?? ""}

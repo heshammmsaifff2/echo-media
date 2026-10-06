@@ -704,7 +704,7 @@ export function PortfolioManager({
                       sizes="64px"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-violet-500/20" />
+                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-muted/20" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

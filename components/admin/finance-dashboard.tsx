@@ -11,6 +11,7 @@ import { type Payment, confirmedTotal, remainingBalance, isFullyPaid } from "@/l
 import { Wallet, Coins, Clock, Banknote, Receipt, TrendingUp, RefreshCw } from "lucide-react";
 
 export type FinanceOrder = {
+  cancelled_at: string | null;
   id: string;
   project_title: string;
   total_amount: number;
@@ -19,7 +20,7 @@ export type FinanceOrder = {
   order_payments: Payment[];
 };
 
-type OrderStatus = "fully_paid" | "partial" | "unpaid";
+type OrderStatus = "fully_paid" | "partial" | "unpaid" | "cancelled";
 type Txn = {
   id: string;
   amount: number;
@@ -35,6 +36,7 @@ type StatusFilter = "all" | OrderStatus;
 type MethodFilter = "all" | "cash" | "receipt";
 
 function orderStatus(o: FinanceOrder): OrderStatus {
+  if (o.cancelled_at) return "cancelled";
   const payments = o.order_payments || [];
   if (isFullyPaid(o.total_amount, payments)) return "fully_paid";
   if (confirmedTotal(payments) > 0) return "partial";
@@ -121,8 +123,8 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
     });
   }, [orders, rangeStart, rangeEnd, status]);
 
-  const outstanding = filteredOrders.reduce((s, o) => s + remainingBalance(o.total_amount, o.order_payments || []), 0);
-  const totalValue = filteredOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+  const outstanding = filteredOrders.reduce((s, o) => s + (o.cancelled_at ? 0 : remainingBalance(o.total_amount, o.order_payments || [])), 0);
+  const totalValue = filteredOrders.reduce((s, o) => s + (o.cancelled_at ? 0 : Number(o.total_amount || 0)), 0);
 
   // Monthly breakdown of the filtered income.
   const byMonth = useMemo(() => {
@@ -156,6 +158,7 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
     { key: "fully_paid", label: t("Fully paid", "مدفوع بالكامل") },
     { key: "partial", label: t("Partial", "مدفوع جزئياً") },
     { key: "unpaid", label: t("Unpaid", "غير مدفوع") },
+    { key: "cancelled", label: t("Cancelled", "ملغي") },
   ];
   const methods: { key: MethodFilter; label: string }[] = [
     { key: "all", label: t("All methods", "كل الطرق") },
@@ -255,7 +258,7 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
             <div className="divide-y divide-border/60">
               {filteredOrders.map((o) => {
                 const paid = confirmedTotal(o.order_payments || []);
-                const remaining = remainingBalance(o.total_amount, o.order_payments || []);
+                const remaining = o.cancelled_at ? 0 : remainingBalance(o.total_amount, o.order_payments || []);
                 return (
                   <div key={o.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="min-w-0 flex-1">
@@ -296,7 +299,7 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
             <div className="divide-y divide-border/60">
               {txns.map((x) => (
                 <div key={x.id} className="flex items-center gap-3 px-4 py-3">
-                  <span className={`grid h-9 w-9 place-items-center rounded-lg ${x.isCash ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"}`}>
+                  <span className={`grid h-9 w-9 place-items-center rounded-lg ${x.isCash ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary"}`}>
                     {x.isCash ? <Banknote size={16} /> : <Receipt size={16} />}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -333,7 +336,7 @@ function SummaryCard({
   const tones: Record<string, string> = {
     green: "bg-green-500/10 text-green-500",
     amber: "bg-amber-500/10 text-amber-500",
-    blue: "bg-blue-500/10 text-blue-500",
+    blue: "bg-primary/10 text-primary",
     violet: "bg-violet-500/10 text-violet-500",
   };
   return (
@@ -349,6 +352,7 @@ function SummaryCard({
 }
 
 function StatusBadge({ status, t }: { status: OrderStatus; t: (en: string, ar: string) => string }) {
+  if (status === "cancelled") return <Badge variant="destructive">{t("Cancelled", "ملغي")}</Badge>;
   if (status === "fully_paid")
     return <Badge className="bg-green-500/10 text-green-500 border-green-500/20 hidden sm:inline-flex">{t("Paid", "مدفوع")}</Badge>;
   if (status === "partial")

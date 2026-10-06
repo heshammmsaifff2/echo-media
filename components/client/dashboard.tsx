@@ -15,7 +15,7 @@ import Image from "next/image";
 import {
   Lock, Unlock, Loader2, Check, Download, ExternalLink, FileText, CreditCard,
   Clock, Timer, AlertTriangle, Eye, Trash2, FileVideo, FileArchive, FileImage,
-  Receipt, Banknote, Plus, Share2, Info, X, CheckCircle2, Smartphone,
+  Receipt, Banknote, Plus, Info, X, CheckCircle2, Smartphone,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Payment, confirmedTotal, remainingBalance, isFullyPaid } from "@/lib/payments";
@@ -58,6 +58,7 @@ function getDeliveryFileMeta(url: string, isAr: boolean) {
 }
 
 type Order = {
+  cancelled_at: string | null;
   id: string;
   project_title: string;
   project_description: string | null;
@@ -381,14 +382,14 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
 
   const payments = order.order_payments || [];
   const paid = confirmedTotal(payments);
-  const balance = remainingBalance(order.total_amount, payments);
+  const balance = order.cancelled_at ? 0 : remainingBalance(order.total_amount, payments);
   const fullyPaid = isFullyPaid(order.total_amount, payments);
   const currency = isAr ? "ج.م" : "EGP";
   const fmt = (n: number) => Number(n || 0).toLocaleString();
   const fmtDate = (d: string) => new Date(d).toLocaleDateString(isAr ? "ar-EG" : "en-GB", { day: "numeric", month: "short" });
 
   const submitReceipt = async () => {
-    if (!file) return;
+    if (!file || order.cancelled_at) return;
     setUploading(true);
     try {
       const { url } = await uploadToCloudinary(file, "echo/receipts");
@@ -414,13 +415,15 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   };
 
   const removePending = async (id: string) => {
+    if (order.cancelled_at) return;
     if (!confirm(isAr ? "حذف هذا الإيصال؟" : "Remove this receipt?")) return;
     const supabase = createClient();
     await supabase.from("order_payments").delete().eq("id", id);
     router.refresh();
   };
 
-  const isLocked = !order.is_confirmed_by_admin;
+  const cancelled = !!order.cancelled_at;
+  const isLocked = cancelled || !order.is_confirmed_by_admin;
   const hasDelivery = (order.delivery_files || []).length > 0;
   const isExpired = order.delivery_expired || (remaining !== null && remaining <= 0 && hasDelivery);
   const isUrgent = remaining !== null && remaining > 0 && remaining < 24 * 60 * 60 * 1000;
@@ -433,7 +436,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
             <CardTitle>{order.project_title}</CardTitle>
             {order.project_description && <p className="text-sm text-muted-foreground mt-1">{order.project_description}</p>}
           </div>
-          {isExpired ? (
+          {cancelled ? <Badge variant="destructive">{isAr ? "ملغي" : "Cancelled"}</Badge> : isExpired ? (
             <Badge className="bg-red-500/10 text-red-500 border-red-500/20 gap-1"><AlertTriangle size={12} /> {isAr ? "منتهي" : "Expired"}</Badge>
           ) : isLocked ? (
             <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 gap-1"><Lock size={12} /> {isAr ? "مقفل" : "Locked"}</Badge>
@@ -469,7 +472,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
         <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-sm">{isAr ? "الدفعات" : "Payments"}</h4>
-            {!fullyPaid && (
+            {!fullyPaid && !cancelled && (
               <Dialog open={addOpen} onOpenChange={setAddOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-8 gap-1.5 cursor-pointer"><Plus size={14} /> {isAr ? "رفع إيصال دفعة" : "Upload a receipt"}</Button>
@@ -507,7 +510,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
             <div className="space-y-2">
               {payments.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 rounded-lg border border-border/50 bg-card p-2.5">
-                  <span className={`grid h-9 w-9 place-items-center rounded-lg ${p.is_cash ? "bg-emerald-500/10 text-emerald-500" : "bg-blue-500/10 text-blue-500"}`}>
+                  <span className={`grid h-9 w-9 place-items-center rounded-lg ${p.is_cash ? "bg-emerald-500/10 text-emerald-500" : "bg-primary/10 text-primary"}`}>
                     {p.is_cash ? <Banknote size={16} /> : <Receipt size={16} />}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -537,7 +540,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                     </Dialog>
                   )}
                   {!p.is_confirmed && p.created_by === "client" && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive cursor-pointer" onClick={() => removePending(p.id)} title={isAr ? "حذف" : "Remove"}><Trash2 size={15} /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive cursor-pointer" disabled={!!order.cancelled_at} onClick={() => removePending(p.id)} title={isAr ? "حذف" : "Remove"}><Trash2 size={15} /></Button>
                   )}
                 </div>
               ))}
@@ -549,7 +552,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
 
         <div>
           <h4 className="font-medium text-sm mb-3">{isAr ? "ملفات التسليم" : "Deliverables"}</h4>
-          {isExpired ? (
+          {cancelled ? <p className="rounded-xl bg-destructive/10 p-5 text-sm">{isAr ? "هذا الطلب ملغي. سجل الدفعات محفوظ والتسليم متوقف." : "This order is cancelled. Payment history is preserved and delivery is disabled."}</p> : isExpired ? (
             <div className="rounded-xl border border-dashed border-red-500/30 bg-red-500/5 p-6 text-center">
               <AlertTriangle size={32} className="mx-auto mb-3 text-red-500/50" />
               <p className="text-sm font-medium text-red-500">{isAr ? "انتهت صلاحية الملفات. تم تسليم المشروع بنجاح." : "Files have expired. Project was delivered successfully."}</p>
@@ -563,7 +566,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
           ) : hasDelivery ? (
             <div>
               {remaining !== null && remaining > 0 && (
-                <div className={`flex items-center gap-2 text-sm mb-3 p-3 rounded-lg ${isUrgent ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-500"}`}>
+                <div className={`flex items-center gap-2 text-sm mb-3 p-3 rounded-lg ${isUrgent ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"}`}>
                   <Timer size={16} /><span className="font-medium">{formatCountdown(remaining, isAr)}</span>
                   <span className="text-xs opacity-75">{isAr ? "— حمّل الملفات قبل انتهاء المهلة" : "— download before time runs out"}</span>
                 </div>
@@ -576,7 +579,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
                     <div key={i} className="rounded-xl border border-border/60 bg-card p-3.5 hover:border-primary/40 transition-all shadow-sm">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.isVideo ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" : meta.isZip ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : meta.isDrive ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" : meta.isImage ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-primary/10 text-primary border border-primary/20"}`}>
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${meta.isVideo ? "bg-purple-500/10 text-purple-500 border border-purple-500/20" : meta.isZip ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : meta.isDrive ? "bg-primary/10 text-primary border border-primary/20" : meta.isImage ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-primary/10 text-primary border border-primary/20"}`}>
                             {meta.isVideo ? <FileVideo size={20} /> : meta.isZip ? <FileArchive size={20} /> : meta.isDrive ? <ExternalLink size={20} /> : meta.isImage ? <FileImage size={20} /> : <Download size={20} />}
                           </div>
                           <div className="min-w-0 flex-1">

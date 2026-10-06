@@ -11,6 +11,7 @@ export async function POST() {
     .from("client_orders")
     .select("id, delivery_files, delivery_type")
     .eq("is_confirmed_by_admin", true)
+    .is("cancelled_at", null)
     .eq("delivery_expired", false)
     .not("delivery_unlocked_at", "is", null)
     .lt("delivery_unlocked_at", sevenDaysAgo);
