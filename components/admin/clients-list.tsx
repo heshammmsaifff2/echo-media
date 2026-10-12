@@ -4,12 +4,13 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Loader2, KeyRound, User, Check, Copy } from "lucide-react";
+import { Plus, Loader2, KeyRound, User, Check, Copy, ShoppingBag } from "lucide-react";
 
 type Client = {
   id: string;
@@ -225,6 +226,17 @@ export function ClientsList({ clients }: { clients: Client[] }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="gap-1.5 cursor-pointer border-border hover:border-primary/60 hover:bg-primary/10"
+                  >
+                    <Link href={`/admin/orders?clientId=${client.id}`}>
+                      <ShoppingBag size={14} className="text-primary" />
+                      <span>{t("Orders", "الطلبات")}</span>
+                    </Link>
+                  </Button>
                   <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" onClick={() => { closeReset(); setResetFor(client); }}>
                     <KeyRound size={14} /> {t("Reset password", "كلمة المرور")}
                   </Button>

@@ -3,11 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { pageMetadata, organizationJsonLd } from "@/lib/seo";
 import { isLocale, type Locale } from "@/lib/locale";
 import { HeroSection } from "@/components/sections/hero";
-import { LogoMoment } from "@/components/sections/logo-moment";
+import { AmbientAurora } from "@/components/ambient-aurora";
+import { SpotlightSection } from "@/components/sections/spotlight";
 import { ShowreelSection, LightingSection } from "@/components/sections/showreel";
 import { FeaturedWork } from "@/components/sections/featured-work";
 import { ClientsSection } from "@/components/sections/process";
-import { GoalSection, CtaSection } from "@/components/sections/closing";
+import { DnaSection } from "@/components/sections/dna";
+import { CtaSection } from "@/components/sections/closing";
 
 type Params = { params: Promise<{ locale: string }> };
 
@@ -43,14 +45,18 @@ export default async function Home({ params }: Params) {
       />
 
       <HeroSection />
-      <ShowreelSection />
-      <LightingSection />
-      
-      <FeaturedWork items={featured || []} categories={catsRes.data || []} />
-      <LogoMoment />
-      <ClientsSection />
-      <GoalSection />
-      <CtaSection />
+
+      {/* Unified, living ambient background across all homepage sections after Hero */}
+      <div className="relative isolate">
+        <AmbientAurora />
+        <ShowreelSection />
+        <LightingSection />
+        <FeaturedWork items={featured || []} categories={catsRes.data || []} />
+        <SpotlightSection />
+        <ClientsSection />
+        <DnaSection />
+        <CtaSection />
+      </div>
     </>
   );
 }

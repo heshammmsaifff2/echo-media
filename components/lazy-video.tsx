@@ -178,8 +178,8 @@ export function LazyVideo({
           >
             <span
               className={cn(
-                "grid h-20 w-20 place-items-center rounded-full border border-white/25 bg-black/35 backdrop-blur-md transition-all duration-300",
-                "group-hover:scale-105 group-hover:border-white/50 group-hover:bg-black/50",
+                "grid h-20 w-20 place-items-center rounded-full border border-white/25 bg-[hsl(var(--echo-base)/0.6)] backdrop-blur-md transition-all duration-300",
+                "group-hover:scale-105 group-hover:border-white/50 group-hover:bg-[hsl(var(--echo-base)/0.8)]",
                 playing && "opacity-0 group-hover:opacity-100"
               )}
             >
@@ -197,7 +197,7 @@ export function LazyVideo({
             aria-label={
               muted ? (isAr ? "تشغيل الصوت" : "Unmute") : isAr ? "كتم الصوت" : "Mute"
             }
-            className="absolute bottom-5 end-5 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur-md transition-colors hover:bg-black/70 cursor-pointer"
+            className="absolute bottom-5 end-5 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-[hsl(var(--echo-base)/0.6)] text-white backdrop-blur-md transition-colors hover:bg-[hsl(var(--echo-base)/0.85)] cursor-pointer"
           >
             {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
           </button>

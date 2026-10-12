@@ -13,7 +13,7 @@ export function ClientsSection() {
   const track = [...sectors, ...sectors];
 
   return (
-    <section className="relative overflow-hidden border-t border-border bg-background py-28 sm:py-36">
+    <section className="relative overflow-hidden border-t border-white/10 bg-transparent py-28 sm:py-36">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
         <div className="mb-12 flex items-center gap-6">
           <span className="eyebrow whitespace-nowrap">{pick(field("label", clients.label))}</span>

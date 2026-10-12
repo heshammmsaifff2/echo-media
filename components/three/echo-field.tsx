@@ -103,7 +103,7 @@ function WaveField({ reduced, target }: { reduced: boolean; target: RefObject<TH
       uTime: { value: 0 },
       uPointer: { value: new THREE.Vector2(0, 0) },
       uIntensity: { value: 1 },
-      uBase: { value: new THREE.Color("#303030") },
+      uBase: { value: new THREE.Color("#162850") },
       uAccent: { value: new THREE.Color("#5b7cff") },
     }),
     []

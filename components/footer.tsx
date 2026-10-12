@@ -23,7 +23,7 @@ export function Footer({ contact = defaultContact }: { contact?: Contact }) {
   const locality = contact.location ? pick(contact.location).trim() : "";
 
   return (
-    <footer className="relative border-t border-border bg-background">
+    <footer className="relative border-t border-white/10 bg-background">
       <div className="mx-auto max-w-[1400px] px-6 py-20 sm:px-10 sm:py-24">
         <div className="grid grid-cols-1 gap-14 lg:grid-cols-12">
           <div className="lg:col-span-5">

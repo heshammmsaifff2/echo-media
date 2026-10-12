@@ -131,7 +131,7 @@ export function PortfolioGrid({
               }}
               className={`group rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-300 cursor-pointer inline-flex items-center gap-2 ${
                 catFilter === null
-                  ? "bg-white text-black font-semibold shadow-md"
+                  ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))] font-semibold shadow-lg shadow-[hsl(var(--echo-accent))]/25 scale-[1.02]"
                   : "border border-dashed border-border/80 text-muted-foreground hover:border-[hsl(var(--echo-accent))]/60 hover:text-bright"
               }`}
               title={isAr ? "عرض بطاقات الفئات" : "View Category Cards"}
@@ -159,7 +159,7 @@ export function PortfolioGrid({
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                         isSelected
-                          ? "bg-black/20 text-inherit font-bold"
+                          ? "bg-[hsl(var(--echo-base)/0.25)] text-inherit font-bold"
                           : "bg-muted text-muted-foreground group-hover:text-bright"
                       }`}
                     >
@@ -184,7 +184,7 @@ export function PortfolioGrid({
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
                     catFilter === "all"
-                      ? "bg-black/20 text-inherit font-bold"
+                      ? "bg-[hsl(var(--echo-base)/0.25)] text-inherit font-bold"
                       : "bg-muted text-muted-foreground group-hover:text-bright"
                   }`}
                 >
@@ -212,7 +212,7 @@ export function PortfolioGrid({
                   onClick={() => setSubFilter("all")}
                   className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer inline-flex items-center gap-1.5 ${
                     subFilter === "all"
-                      ? "bg-white text-black font-semibold shadow-sm"
+                      ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))] font-semibold shadow-sm shadow-[hsl(var(--echo-accent))]/20"
                       : "border border-border/70 text-muted-foreground hover:text-bright hover:border-border"
                   }`}
                 >
@@ -220,7 +220,7 @@ export function PortfolioGrid({
                   <span
                     className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                       subFilter === "all"
-                        ? "bg-black/15 text-black font-bold"
+                        ? "bg-[hsl(var(--echo-base)/0.2)] text-[hsl(var(--echo-base))] font-bold"
                         : "bg-muted/70 text-muted-foreground"
                     }`}
                   >
@@ -239,7 +239,7 @@ export function PortfolioGrid({
                       onClick={() => setSubFilter(sub.id)}
                       className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer inline-flex items-center gap-1.5 ${
                         isSubSelected
-                          ? "bg-white text-black font-semibold shadow-sm"
+                          ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))] font-semibold shadow-sm shadow-[hsl(var(--echo-accent))]/20"
                           : "border border-border/70 text-muted-foreground hover:text-bright hover:border-border"
                       }`}
                     >
@@ -248,7 +248,7 @@ export function PortfolioGrid({
                         <span
                           className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                             isSubSelected
-                              ? "bg-black/15 text-black font-bold"
+                              ? "bg-[hsl(var(--echo-base)/0.2)] text-[hsl(var(--echo-base))] font-bold"
                               : "bg-muted/70 text-muted-foreground"
                           }`}
                         >
@@ -264,7 +264,7 @@ export function PortfolioGrid({
                     onClick={() => setSubFilter("none")}
                     className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors duration-200 cursor-pointer inline-flex items-center gap-1.5 ${
                       subFilter === "none"
-                        ? "bg-white text-black font-semibold shadow-sm"
+                        ? "bg-[hsl(var(--echo-accent))] text-[hsl(var(--echo-base))] font-semibold shadow-sm shadow-[hsl(var(--echo-accent))]/20"
                         : "border border-border/70 text-muted-foreground hover:text-bright hover:border-border"
                     }`}
                   >
@@ -272,7 +272,7 @@ export function PortfolioGrid({
                     <span
                       className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                         subFilter === "none"
-                          ? "bg-black/15 text-black font-bold"
+                          ? "bg-[hsl(var(--echo-base)/0.2)] text-[hsl(var(--echo-base))] font-bold"
                           : "bg-muted/70 text-muted-foreground"
                       }`}
                     >
@@ -406,12 +406,12 @@ export function PortfolioGrid({
                           />
                         ) : (
                           <div className="absolute inset-0 grid place-items-center bg-surface">
-                            <span className="grid h-16 w-16 place-items-center rounded-full border border-white/20 bg-black/40 backdrop-blur transition-transform duration-500 group-hover:scale-110">
+                            <span className="grid h-16 w-16 place-items-center rounded-full border border-white/20 bg-[hsl(var(--echo-base)/0.6)] backdrop-blur transition-transform duration-500 group-hover:scale-110">
                               <Play size={22} className="ms-0.5 text-white" fill="currentColor" />
                             </span>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--echo-base)/0.92)] via-[hsl(var(--echo-base)/0.25)] to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 p-7">
                           {title && (
                             <h3 className="text-xl font-semibold text-white">
@@ -441,12 +441,12 @@ export function PortfolioGrid({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/92 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[hsl(var(--echo-base)/0.96)] p-4 backdrop-blur-md"
             onClick={() => setLightbox(null)}
           >
             <button
               onClick={() => setLightbox(null)}
-              className="absolute end-5 top-5 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur transition-colors hover:bg-black/75 cursor-pointer"
+              className="absolute end-5 top-5 z-10 grid h-11 w-11 place-items-center rounded-full border border-border/80 bg-surface/80 text-white backdrop-blur transition-colors hover:bg-surface cursor-pointer"
               aria-label="Close"
             >
               <X size={24} />

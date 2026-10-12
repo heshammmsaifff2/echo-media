@@ -118,9 +118,37 @@ export const manifesto = {
 /* ── DNA: why we exist, vision, mission ───────────────────────────────── */
 
 export const dna = {
+  tagline: {
+    en: "TO CREATE FILMS THAT MAKE BRANDS IMPOSSIBLE TO IGNORE.",
+    ar: "صناعة أفلام تجعل العلامات التجارية عصية على النسيان.",
+  } as Bi,
+  version: {
+    en: "V1.0",
+    ar: "V1.0",
+  } as Bi,
+  badge: {
+    en: "DNA",
+    ar: "DNA",
+  } as Bi,
+  question: {
+    en: "Why We Exist?",
+    ar: "لماذا نتواجد؟",
+  } as Bi,
+  body: {
+    en: "Production exists to redefine visual storytelling in the Arab world by creating films that don't just look beautiful but leave a lasting impact.",
+    ar: "وُجدت Echo لتعيد صياغة السرد البصري في العالم العربي، من خلال صناعة أفلام لا تكتفي بكونها جميلة، بل تترك أثراً دائماً لا يُنسى.",
+  } as Bi,
+  copyright: {
+    en: "© 2026 ALL RIGHTS RESERVED",
+    ar: "© 2026 جميع الحقوق محفوظة",
+  } as Bi,
+  brandNote: {
+    en: "echo | Media & Production",
+    ar: "echo | Media & Production",
+  } as Bi,
   label: { en: "Our DNA", ar: "حمضنا النووي" } as Bi,
   whyWeExist: {
-    title: { en: "Why We Exist", ar: "لماذا وُجدنا" } as Bi,
+    title: { en: "Why We Exist?", ar: "لماذا نتواجد؟" } as Bi,
     body: {
       en: "Echo Media Production exists to redefine visual storytelling in the Arab world by creating films that don't just look beautiful — but leave a lasting impact.",
       ar: "وُجدت Echo Media Production لإعادة تعريف السرد البصري في العالم العربي، من خلال إنتاج أعمال لا تكتفي بالإبهار البصري، بل تترك أثرًا حقيقيًا في الناس.",
@@ -301,6 +329,24 @@ export const style = {
   } as BiList,
 } as const;
 
+/* ── Spotlight / Featured Showcase ────────────────────────────────────── */
+
+export const spotlight = {
+  label: { en: "Featured Showcase", ar: "العمل المميز" } as Bi,
+  heading: {
+    en: "Stories crafted to command every screen.",
+    ar: "قصص بصرية مصممة لتخطف الأنظار على كل شاشة.",
+  } as Bi,
+  body: {
+    en: "From the initial beat to the final color grade, we engineer every second for cinematic weight and lasting emotional resonance.",
+    ar: "من الفكرة الأولى وحتى التدريج اللوني النهائي، نصنع كل ثانية بوزن سينمائي وتأثير عاطفي يدوم في الذاكرة.",
+  } as Bi,
+  cta: {
+    en: "Watch Full Film",
+    ar: "مشاهدة الفيديو بالكامل",
+  } as Bi,
+} as const;
+
 /* ── Process ──────────────────────────────────────────────────────────── */
 
 export const workflow = {
@@ -330,11 +376,11 @@ export const clients = {
   } as BiList,
 } as const;
 
-/* ── Goal ─────────────────────────────────────────────────────────────── */
+/* ── Legacy Goal Alias ─────────────────────────────────────────────────── */
 
 export const goal = {
-  label: { en: "2030", ar: "٢٠٣٠" } as Bi,
-  question: { en: "Who makes cinematic ads?", ar: "مين يعمل إعلان سينمائي؟" } as Bi,
+  ...dna,
+  label: dna.badge,
   answer: { en: "Echo.", ar: "Echo." } as Bi,
 } as const;
 
@@ -466,7 +512,7 @@ export const founder = {
     ar: "المؤسس والمدير الإبداعي",
   } as Bi,
   /** Set to a public image path or URL to replace the monogram placeholder. */
-  photo: "",
+  photo: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid1.jpg",
   bio: {
     en: "Mahmoud Mekky founded Echo on a single conviction: that most brand video fails not in the camera, but in the thinking that came before it. Over a decade of commercial filmmaking, podcast production, and creative direction across the region, he has built the house around that idea — research first, camera last.",
     ar: "أسّس محمود مكي Echo على قناعة واحدة: أن معظم فيديوهات العلامات التجارية لا تفشل في الكاميرا، بل في التفكير الذي سبقها. وعبر أكثر من عقد في صناعة الأفلام التجارية وإنتاج البودكاست والإدارة الإبداعية في المنطقة، بنى البيت حول هذه الفكرة — البحث أولًا، والكاميرا أخيرًا.",

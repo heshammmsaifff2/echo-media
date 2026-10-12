@@ -142,10 +142,10 @@ export function MediaPanel({
         className={cn(
           "pointer-events-none absolute inset-0 z-[1]",
           overlay === "strong"
-            ? "bg-black/65"
+            ? "bg-[hsl(var(--echo-base)/0.75)]"
             : overlay === "soft"
-              ? "bg-black/25"
-              : "bg-black/45"
+              ? "bg-[hsl(var(--echo-base)/0.3)]"
+              : "bg-[hsl(var(--echo-base)/0.5)]"
         )}
       />
       <div

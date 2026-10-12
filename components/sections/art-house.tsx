@@ -103,7 +103,11 @@ export function ArtHouseContent() {
       </section>
 
       {/* Equipment — clean two-column definition list. */}
-      <section className="border-t border-border bg-surface py-28 sm:py-36 grain">
+      <section className="relative overflow-hidden border-t border-border bg-surface py-28 sm:py-36 grain">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute end-0 top-1/3 h-[420px] w-[520px] rounded-full bg-[hsl(var(--echo-accent))] opacity-[0.09] blur-[140px]"
+        />
         <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
           <div className="mb-8 flex items-center gap-6">
             <span className="eyebrow whitespace-nowrap">

@@ -15,7 +15,9 @@ import {
   style,
   clients,
   goal,
+  dna,
   cta,
+  spotlight,
   artHouse,
   founder,
   brand,
@@ -63,6 +65,8 @@ export type SectionDef = {
   label: Bi;
   /** false = no background media (e.g. the logo card uses a fixed treatment). */
   media: boolean;
+  /** Specific media types allowed for this section. Defaults to ["image", "video", "none"] */
+  mediaTypes?: readonly ("image" | "video" | "none")[];
   defaultBg: SectionBg;
   fields: FieldDef[];
 };
@@ -127,14 +131,20 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    slug: "home.logo",
+    slug: "home.spotlight",
     page: "home",
-    label: L("Logo moment", "لحظة اللوجو"),
-    media: false,
-    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid1.jpg", poster: null },
+    label: L("Featured showcase", "العرض المميز"),
+    media: true,
+    defaultBg: {
+      type: "video",
+      url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final.mp4",
+      poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final.jpg",
+    },
     fields: [
-      { id: "motto", label: L("Motto", "الشعار"), type: "bi", def: L(brand.motto, brand.motto) },
-      { id: "philosophy", label: L("Sub-label", "سطر سفلي"), type: "bi", def: L("Internal philosophy", "الفلسفة الداخلية") },
+      { id: "label", label: L("Label", "التصنيف"), type: "bi", def: spotlight.label },
+      { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: spotlight.heading },
+      { id: "body", label: L("Description", "الوصف"), type: "biLong", def: spotlight.body },
+      { id: "cta", label: L("Button text", "نص الزر"), type: "bi", def: spotlight.cta },
     ],
   },
   {
@@ -151,15 +161,19 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    slug: "home.goal",
+    slug: "home.dna",
     page: "home",
-    label: L("2030 goal", "هدف ٢٠٣٠"),
-    media: false,
-    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final.jpg" },
+    label: L("DNA (Why We Exist)", "هوية DNA (لماذا نتواجد)"),
+    media: true,
+    defaultBg: { type: "none", url: null, poster: null },
     fields: [
-      { id: "label", label: L("Label", "التصنيف"), type: "bi", def: goal.label },
-      { id: "question", label: L("Question", "السؤال"), type: "bi", def: goal.question },
-      { id: "answer", label: L("Answer", "الإجابة"), type: "bi", def: goal.answer },
+      { id: "tagline", label: L("Top tagline", "السطر العلوي"), type: "bi", def: dna.tagline },
+      { id: "version", label: L("Version label (e.g. V1.0)", "رقم الإصدار (مثل V1.0)"), type: "bi", def: dna.version },
+      { id: "badge", label: L("Watermark text (DNA)", "النص الخلفي (DNA)"), type: "bi", def: dna.badge },
+      { id: "question", label: L("Headline / Question", "العنوان / السؤال"), type: "bi", def: dna.question },
+      { id: "body", label: L("Narrative body", "النص الوصفي"), type: "biLong", def: dna.body },
+      { id: "copyright", label: L("Bottom copyright", "حقوق النشر السفلية"), type: "bi", def: dna.copyright },
+      { id: "brandNote", label: L("Bottom brand note", "توقيع العلامة السفلي"), type: "bi", def: dna.brandNote },
     ],
   },
   {
@@ -245,7 +259,8 @@ export const SECTIONS: SectionDef[] = [
     page: "founder",
     label: L("Founder hero", "واجهة المؤسس"),
     media: true,
-    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/vid1-16-9.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid1.jpg" },
+    mediaTypes: ["image"] as const,
+    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/vid1.jpg", poster: null },
     fields: [
       { id: "role", label: L("Role", "المنصب"), type: "bi", def: founder.role },
       { id: "name", label: L("Name", "الاسم"), type: "bi", def: founder.name },
@@ -284,6 +299,9 @@ export function sectionDef(slug: string): SectionDef | undefined {
 /** DB background if set, otherwise the code default passed in. */
 export function contentBg(row: SectionRow | undefined, fallback: SectionBg): SectionBg {
   if (row?.bg_type) {
+    if (row.bg_type === "none") {
+      return { type: "none", url: null, poster: null };
+    }
     return { type: row.bg_type, url: row.bg_url, poster: row.bg_poster_url };
   }
   return fallback;

@@ -47,7 +47,7 @@ export function LightingSection() {
   const video2 = field("video2", LIGHTING_DEFAULT.video2);
 
   return (
-    <section className="relative overflow-hidden border-t border-border bg-surface py-28 sm:py-36 grain">
+    <section className="relative overflow-hidden border-t border-white/10 bg-transparent py-28 sm:py-36">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
         <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
           <div className="lg:col-span-5">
@@ -101,7 +101,7 @@ export function ShowreelSection() {
   const bandImage = bg.type === "image" && bg.url ? bg.url : undefined;
 
   return (
-    <section className="relative border-t border-border bg-background py-28 sm:py-36">
+    <section className="relative bg-transparent py-28 sm:py-36">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
         <div className="mb-14 flex items-center gap-6">
           <span className="eyebrow whitespace-nowrap">{pick(field("label", style.label))}</span>

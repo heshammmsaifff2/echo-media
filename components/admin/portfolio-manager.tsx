@@ -479,7 +479,7 @@ export function PortfolioManager({
                   {thumbMode === "video" ? (
                     videoPreviewUrl ? (
                       <div className="space-y-3">
-                        <div className="relative rounded-lg overflow-hidden bg-black/90 aspect-video max-h-64 flex items-center justify-center border border-border/40 group">
+                        <div className="relative rounded-lg overflow-hidden bg-surface aspect-video max-h-64 flex items-center justify-center border border-border/60 group">
                           <video
                             ref={videoRef}
                             src={videoPreviewUrl}
@@ -495,7 +495,7 @@ export function PortfolioManager({
                           <button
                             type="button"
                             onClick={togglePlay}
-                            className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+                            className="absolute inset-0 m-auto w-12 h-12 rounded-full bg-[hsl(var(--echo-base)/0.7)] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
                           >
                             {isVideoPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
                           </button>
@@ -584,7 +584,7 @@ export function PortfolioManager({
                         {/* Captured thumbnail preview */}
                         {capturedThumbPreview && (
                           <div className="flex items-center gap-3 p-2.5 rounded-lg border border-green-500/30 bg-green-500/5">
-                            <div className="w-20 h-14 rounded-md overflow-hidden bg-black flex-shrink-0 relative border border-border">
+                            <div className="w-20 h-14 rounded-md overflow-hidden bg-surface flex-shrink-0 relative border border-border">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={capturedThumbPreview}
@@ -642,7 +642,7 @@ export function PortfolioManager({
                       />
                       {capturedThumbPreview && (
                         <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-background/50">
-                          <div className="w-20 h-14 rounded-md overflow-hidden bg-black flex-shrink-0 relative border border-border">
+                          <div className="w-20 h-14 rounded-md overflow-hidden bg-surface flex-shrink-0 relative border border-border">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={capturedThumbPreview}

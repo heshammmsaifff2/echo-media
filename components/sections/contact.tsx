@@ -33,7 +33,7 @@ export function ContactContent() {
   };
 
   const inputBase =
-    "w-full rounded-xl border border-border bg-surface px-4 py-3 text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-[hsl(var(--echo-accent))]";
+    "w-full rounded-xl border border-border bg-surface px-4 py-3 text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-[hsl(var(--echo-accent))] focus:ring-1 focus:ring-[hsl(var(--echo-accent))]/40";
 
   return (
     <section className="relative min-h-[100svh] overflow-hidden bg-background grain">

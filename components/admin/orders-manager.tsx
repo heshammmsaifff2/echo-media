@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Eye, Check, Loader2, ExternalLink, Lock, Unlock, Timer, AlertTriangle,
   Upload, FileArchive, FileVideo, FileImage, FileText, Trash2, Link as LinkIcon,
-  Banknote, Receipt, Clock, Pencil, XCircle,
+  Banknote, Receipt, Clock, Pencil, XCircle, Search, X, User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -72,13 +72,74 @@ function deliveryRemaining(unlockedAt: string, isAr: boolean) {
     : (isAr ? `متاح للعميل: ${hours} ساعة` : `Client access: ${hours}h left`);
 }
 
-export function OrdersManager({ initialOrders, clients }: { initialOrders: Order[]; clients: Client[] }) {
+export function OrdersManager({
+  initialOrders,
+  clients,
+  initialClientId = "",
+}: {
+  initialOrders: Order[];
+  clients: Client[];
+  initialClientId?: string;
+}) {
   const [orders, setOrders] = useState<Order[]>(
     initialOrders.map((o) => ({ ...o, order_payments: o.order_payments || [] }))
   );
   useEffect(() => {
     setOrders(initialOrders.map((order) => ({ ...order, order_payments: order.order_payments || [] })));
   }, [initialOrders]);
+
+  // Client filter & text search states
+  const [selectedClientId, setSelectedClientId] = useState<string>(initialClientId || "all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  useEffect(() => {
+    if (initialClientId) {
+      setSelectedClientId(initialClientId);
+    } else if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const cid = params.get("clientId") || params.get("client");
+      if (cid) setSelectedClientId(cid);
+    }
+  }, [initialClientId]);
+
+  const updateClientFilter = (val: string) => {
+    setSelectedClientId(val);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (val && val !== "all") {
+        url.searchParams.set("clientId", val);
+      } else {
+        url.searchParams.delete("clientId");
+        url.searchParams.delete("client");
+      }
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
+
+  const filteredOrders = orders.filter((order) => {
+    if (selectedClientId && selectedClientId !== "all") {
+      if (order.client_id !== selectedClientId) return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const clientName = (order.profiles?.full_name || "").toLowerCase();
+      const clientEmail = (order.profiles?.email || "").toLowerCase();
+      const title = (order.project_title || "").toLowerCase();
+      const desc = (order.project_description || "").toLowerCase();
+      if (
+        !clientName.includes(q) &&
+        !clientEmail.includes(q) &&
+        !title.includes(q) &&
+        !desc.includes(q)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const activeClient = clients.find((c) => c.id === selectedClientId);
+
   const [editOrder, setEditOrder] = useState<Order | null>(null);
   const [editForm, setEditForm] = useState({ client_id: "", project_title: "", project_description: "", total_amount: "" });
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
@@ -92,6 +153,12 @@ export function OrdersManager({ initialOrders, clients }: { initialOrders: Order
   const currency = isAr ? "ج.م" : "EGP";
 
   const [newOrder, setNewOrder] = useState({ client_id: "", project_title: "", project_description: "", total_amount: "" });
+
+  useEffect(() => {
+    if (createOpen && selectedClientId && selectedClientId !== "all" && !newOrder.client_id) {
+      setNewOrder((prev) => ({ ...prev, client_id: selectedClientId }));
+    }
+  }, [createOpen, selectedClientId]);
 
   // Payment dialog: either confirming a client's receipt, or adding a cash payment.
   const [payDialog, setPayDialog] = useState<{ order: Order; payment: Payment | null } | null>(null);
@@ -333,11 +400,130 @@ export function OrdersManager({ initialOrders, clients }: { initialOrders: Order
         </Dialog>
       </div>
 
-      {orders.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">{isAr ? "لا توجد طلبات بعد" : "No orders yet."}</CardContent></Card>
+      {/* ── Client & Search Filter Bar ── */}
+      <div className="mb-6 rounded-xl border border-border/60 bg-muted/20 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+            {/* Filter by Client Dropdown */}
+            <div className="w-full sm:w-72">
+              <Select value={selectedClientId} onValueChange={updateClientFilter}>
+                <SelectTrigger className="w-full bg-background cursor-pointer">
+                  <div className="flex items-center gap-2 truncate">
+                    <User size={15} className="text-muted-foreground shrink-0" />
+                    <SelectValue placeholder={isAr ? "تصفية بالعميل: الكل" : "Filter by client: All"} />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {isAr ? "جميع العملاء (الكل)" : "All Clients"}
+                  </SelectItem>
+                  {clients.map((c) => {
+                    const count = orders.filter((o) => o.client_id === c.id).length;
+                    return (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.full_name || c.email} {count > 0 ? `(${count})` : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={isAr ? "بحث باسم العميل أو عنوان المشروع…" : "Search by client name or project…"}
+                className="ps-9 pe-8 bg-background"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Counts & Clear */}
+          <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-muted-foreground">
+            <span>
+              {isAr
+                ? `عرض ${filteredOrders.length} من أصل ${orders.length} طلب`
+                : `Showing ${filteredOrders.length} of ${orders.length} orders`}
+            </span>
+            {(selectedClientId !== "all" || searchQuery.trim()) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  updateClientFilter("all");
+                  setSearchQuery("");
+                }}
+                className="h-7 px-2 text-xs text-primary hover:text-primary cursor-pointer gap-1"
+              >
+                <X size={13} />
+                <span>{isAr ? "إلغاء التصفية" : "Clear filter"}</span>
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Active Client Banner */}
+        {activeClient && (
+          <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2 text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">{isAr ? "تصفية مفعلة لطلبات:" : "Filtered orders for:"}</span>
+              <span className="font-semibold text-primary">{activeClient.full_name || activeClient.email}</span>
+              <Badge variant="outline" className="border-primary/40 text-[11px] font-mono">
+                {filteredOrders.length} {isAr ? "طلب" : "orders"}
+              </Badge>
+            </div>
+            <button
+              type="button"
+              onClick={() => updateClientFilter("all")}
+              className="text-xs text-muted-foreground hover:text-foreground underline cursor-pointer"
+            >
+              {isAr ? "عرض كل العملاء" : "Show all clients"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {filteredOrders.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <p>
+              {orders.length === 0
+                ? (isAr ? "لا توجد طلبات بعد" : "No orders yet.")
+                : (isAr ? "لا توجد طلبات تطابق هذا العميل أو البحث." : "No orders match this client or search.")}
+            </p>
+            {(selectedClientId !== "all" || searchQuery.trim()) && (
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    updateClientFilter("all");
+                    setSearchQuery("");
+                  }}
+                  className="cursor-pointer gap-1.5"
+                >
+                  <X size={14} />
+                  <span>{isAr ? "إلغاء التصفية وعرض كل الطلبات" : "Reset filter & view all orders"}</span>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4">
-          {orders.map((order) => {
+          {filteredOrders.map((order) => {
             const payments = order.order_payments || [];
             const paid = confirmedTotal(payments);
             const remaining = remainingBalance(order.total_amount, payments);
@@ -349,9 +535,17 @@ export function OrdersManager({ initialOrders, clients }: { initialOrders: Order
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-base">{order.project_title}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {order.profiles?.full_name || order.profiles?.email || (isAr ? "عميل غير معروف" : "Unknown client")}
-                      </p>
+                      <button
+                        type="button"
+                        onClick={() => updateClientFilter(order.client_id)}
+                        className="text-sm text-muted-foreground hover:text-primary transition-colors mt-0.5 text-start cursor-pointer flex items-center gap-1 group"
+                        title={isAr ? "تصفية بطلبات هذا العميل" : "Filter by this client"}
+                      >
+                        <User size={13} className="text-muted-foreground group-hover:text-primary" />
+                        <span className="group-hover:underline">
+                          {order.profiles?.full_name || order.profiles?.email || (isAr ? "عميل غير معروف" : "Unknown client")}
+                        </span>
+                      </button>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       {order.cancelled_at && <Badge variant="destructive">{isAr ? "ملغي" : "Cancelled"}</Badge>}

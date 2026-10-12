@@ -38,7 +38,7 @@ export function FeaturedWork({
   if (items.length === 0) return null;
 
   return (
-    <section className="relative border-t border-border bg-background py-32 sm:py-44">
+    <section className="relative border-t border-white/10 bg-transparent py-32 sm:py-44">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
         <div className="mb-16 flex items-center gap-6">
           <span className="eyebrow whitespace-nowrap">
@@ -66,7 +66,7 @@ export function FeaturedWork({
             <StaggerItem key={item.id}>
               <Link
                 href="/portfolio"
-                className="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-border bg-surface cursor-pointer"
+                className="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-white/15 bg-[#030922]/75 cursor-pointer transition-all duration-300 hover:border-white/30 hover:shadow-2xl hover:shadow-[#2f6de8]/20"
               >
                 {item.thumbnail_url || item.media_type === "image" ? (
                   <Image
@@ -77,12 +77,12 @@ export function FeaturedWork({
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
                 ) : (
-                  <div className="absolute inset-0 grid place-items-center bg-surface">
+                  <div className="absolute inset-0 grid place-items-center bg-[#030922]/40">
                     <Play size={30} className="text-muted-foreground" />
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[hsl(var(--echo-base)/0.92)] via-[hsl(var(--echo-base)/0.25)] to-transparent" />
 
                 <div className="absolute inset-x-0 bottom-0 p-7">
                   <span className="eyebrow text-[hsl(var(--echo-accent))]">

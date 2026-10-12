@@ -5,30 +5,41 @@
 /*
  * Echo Media Production — design tokens.
  *
- * Dark-only by design: this is a cinematic brand and the palette is built from
- * seven exact brand colors. :root and .dark carry identical values
- * so a stray theme class can never wash the site out.
+ * Cinematic brand palette built from identity blue shades:
  *
- *   #0a0a0a  base          #a6a6a6  muted text
- *   #181818  surface       #f2f2f0  text
- *   #303030  line          #ffffff  emphasis
- *   #5b7cff  accent
+ *   --echo-base          #060913  Deep midnight navy base
+ *   --echo-surface       #0f172a  Rich identity navy surface (cards, elevated sections)
+ *   --echo-surface-hover #172340  Elevated interactive surface
+ *   --echo-line          #1e2c4a  Navy-slate border line
+ *   --echo-muted         #9aa8cc  Soft ice-blue muted text
+ *   --echo-text          #edf2fa  Crisp luminous cool white body text
+ *   --echo-bright        #ffffff  Pure white emphasis
+ *   --echo-accent        #5b7cff  Echo Electric Blue accent
  */
 
 @layer base {
+
   :root,
   .dark {
     --font-display: var(--font-inter), "Inter", system-ui, sans-serif;
     --font-ar: var(--font-tajawal), "Tajawal", system-ui, sans-serif;
 
-    /* Raw brand values */
-    --echo-base: 0.0000000000 0.0000000000% 3.9215686275%;
-    --echo-surface: 0.0000000000 0.0000000000% 9.4117647059%;
-    --echo-line: 0.0000000000 0.0000000000% 18.8235294118%;
-    --echo-muted: 0.0000000000 0.0000000000% 65.0980392157%;
-    --echo-text: 60.0000000000 7.1428571429% 94.5098039216%;
-    --echo-bright: 0.0000000000 0.0000000000% 100.0000000000%;
-    --echo-accent: 227.9268292683 100.0000000000% 67.8431372549%;
+    /* Raw brand values — sampled exactly from brand poster */
+    --echo-base: 224 93% 5.5%;
+    /* #01081B - midnight navy base */
+    --echo-surface: 225 60% 11%;
+    /* #071338 - rich deep cobalt surface */
+    --echo-surface-hover: 225 50% 16%;
+    /* #102154 - elevated hover surface */
+    --echo-line: 225 35% 20%;
+    /* #21356e - harmonious navy border */
+    --echo-muted: 224 28% 70%;
+    /* #9db4db - soft ice-blue muted text */
+    --echo-text: 224 22% 95%;
+    /* #eff4fc - luminous cool-white text */
+    --echo-bright: 0 0% 100%;
+    --echo-accent: 220 80% 55%;
+    /* #2F6DE8 - radiant electric blue */
 
     /* Semantic tokens (shadcn contract) */
     --background: var(--echo-base);
@@ -184,6 +195,7 @@
 }
 
 @layer utilities {
+
   /* Poster-inspired glow, using only Echo Blue over Echo Black. */
   .echo-blue-gradient {
     background-color: hsl(var(--echo-base));
@@ -206,6 +218,10 @@
 
   .bg-surface {
     background-color: hsl(var(--echo-surface));
+  }
+
+  .bg-surface-hover {
+    background-color: hsl(var(--echo-surface-hover));
   }
 
   /* Film grain — keeps flat dark panels from banding. */
@@ -232,13 +248,11 @@
   }
 
   .marquee-mask {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 12%,
-      #000 88%,
-      transparent
-    );
+    mask-image: linear-gradient(to right,
+        transparent,
+        #000 12%,
+        #000 88%,
+        transparent);
   }
 }
 
@@ -246,12 +260,81 @@
   from {
     transform: translate3d(0, 0, 0);
   }
+
   to {
     transform: translate3d(-50%, 0, 0);
   }
 }
 
+/* Ambient Aurora floating motions matching the identity poster */
+@keyframes aurora-drift-1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  33% {
+    transform: translate3d(45px, -25px, 0);
+  }
+  66% {
+    transform: translate3d(-25px, 20px, 0);
+  }
+}
+
+@keyframes aurora-drift-2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-50px, 35px, 0);
+  }
+}
+
+@keyframes aurora-drift-3 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  33% {
+    transform: translate3d(50px, -35px, 0);
+  }
+  66% {
+    transform: translate3d(-30px, -15px, 0);
+  }
+}
+
+@keyframes aurora-drift-4 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(-35px, -25px, 0);
+  }
+}
+
+.aurora-orb-1 {
+  animation: aurora-drift-1 24s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.aurora-orb-2 {
+  animation: aurora-drift-2 30s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.aurora-orb-3 {
+  animation: aurora-drift-3 22s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.aurora-orb-4 {
+  animation: aurora-drift-4 28s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -260,7 +343,30 @@
     transition-duration: 0.01ms !important;
   }
 
-  .marquee-track {
-    animation: none;
+  .marquee-track,
+  .aurora-orb-1,
+  .aurora-orb-2,
+  .aurora-orb-3,
+  .aurora-orb-4,
+  .aurora-streak {
+    animation: none !important;
   }
+}
+
+@keyframes aurora-streak {
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-32deg);
+  }
+
+  50% {
+    transform: translate3d(-50px, -25px, 0) rotate(-30deg);
+  }
+}
+
+.aurora-streak {
+  animation: aurora-streak 18s ease-in-out infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }

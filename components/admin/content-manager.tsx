@@ -61,11 +61,36 @@ function initFields(def: SectionDef, row?: SectionRow): Record<string, FieldVal>
 }
 
 function initBg(row?: SectionRow, def?: SectionDef): Bg {
+  const allowed = def?.mediaTypes ?? (["image", "video", "none"] as const);
+  let rawType = (row?.bg_type as Bg["type"]) ?? def?.defaultBg.type ?? "none";
+  if (!allowed.includes(rawType as "image" | "video" | "none")) {
+    rawType = (allowed[0] as Bg["type"]) ?? "image";
+  }
+
+  // If this section has a row stored in DB:
+  if (row) {
+    if (rawType === "none") {
+      return {
+        type: "none",
+        url: "",
+        poster: "",
+        publicId: "",
+      };
+    }
+    return {
+      type: rawType,
+      url: row.bg_url ?? "",
+      poster: row.bg_poster_url ?? "",
+      publicId: row.bg_public_id ?? "",
+    };
+  }
+
+  // If no DB row exists yet:
   return {
-    type: (row?.bg_type as Bg["type"]) ?? def?.defaultBg.type ?? "none",
-    url: row?.bg_url ?? def?.defaultBg.url ?? "",
-    poster: row?.bg_poster_url ?? def?.defaultBg.poster ?? "",
-    publicId: row?.bg_public_id ?? "",
+    type: rawType,
+    url: rawType === "none" ? "" : (def?.defaultBg.url ?? ""),
+    poster: rawType === "none" ? "" : (def?.defaultBg.poster ?? ""),
+    publicId: "",
   };
 }
 
@@ -78,6 +103,10 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
   const editing = SECTIONS.find((section) => section.slug === editingSlug) ?? null;
   const [fields, setFields] = useState<Record<string, FieldVal>>(() => editing ? initFields(editing, initialRows[editing.slug]) : {});
   const [bg, setBg] = useState<Bg>(() => initBg(editing ? initialRows[editing.slug] : undefined, editing ?? undefined));
+  const [muted, setMuted] = useState<boolean>(() => {
+    const raw = editing ? initialRows[editing.slug]?.content?.muted : undefined;
+    return raw !== undefined ? Boolean(raw) : true;
+  });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"media" | "poster" | null>(null);
 
@@ -126,13 +155,17 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
         }
       }
 
+      if (bg.type === "video" || editing.slug === "home.spotlight") {
+        content["muted"] = muted;
+      }
+
       const payload = {
         slug: editing.slug,
         content,
         bg_type: bg.type,
-        bg_url: bg.type === "none" ? null : bg.url || null,
-        bg_poster_url: bg.type === "video" ? bg.poster || null : null,
-        bg_public_id: bg.publicId || null,
+        bg_url: bg.type === "none" ? null : (bg.url?.trim() || null),
+        bg_poster_url: (bg.type === "video" && bg.poster?.trim()) ? bg.poster.trim() : null,
+        bg_public_id: bg.type === "none" ? null : (bg.publicId || null),
       };
 
       const supabase = createClient();
@@ -177,10 +210,19 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
             <div className="grid gap-3">
               {items.map((def) => {
                 const row = rows[def.slug];
-                const type = (row?.bg_type as string) ?? def.defaultBg.type;
-                const url = row?.bg_url ?? def.defaultBg.url;
-                const poster = row?.bg_poster_url ?? def.defaultBg.poster;
-                const preview = type === "video" ? poster || null : url;
+                const allowed = def.mediaTypes ?? (["image", "video", "none"] as const);
+                let type = (row?.bg_type as string) ?? def.defaultBg.type;
+                if (!allowed.includes(type as "image" | "video" | "none")) {
+                  type = allowed[0] ?? "image";
+                }
+
+                let url = "";
+                let poster = "";
+                if (type !== "none") {
+                  url = row ? (row.bg_url ?? "") : (def.defaultBg.url ?? "");
+                  poster = row ? (row.bg_poster_url ?? "") : (def.defaultBg.poster ?? "");
+                }
+                const preview = type === "none" ? null : (type === "video" ? poster || null : url || null);
                 return (
                   <Card key={def.slug}>
                     <CardContent className="flex items-center gap-4 py-3">
@@ -201,9 +243,11 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
                           {isAr ? def.label.ar : def.label.en}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {def.media
-                            ? `${type} · ${url || t("no media", "بدون وسائط")}`
-                            : t("Text only — no background", "نص فقط — بدون خلفية")}
+                          {!def.media
+                            ? t("Text only — no media", "نص فقط — بدون وسائط")
+                            : type === "none" || !url
+                            ? t("None — no background media", "بدون — لا توجد وسائط")
+                            : `${type} · ${url}`}
                         </p>
                       </div>
                       <Button variant="outline" asChild className="gap-2">
@@ -235,38 +279,108 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
               {editing.media && (
                 <div className="grid gap-3 rounded-xl border border-border/60 p-6">
                 <Label className="text-sm font-semibold">
-                  {t("Background", "الخلفية")}
+                  {editing.slug === "founder.hero"
+                    ? t("Founder Profile Photo", "صورة بروفايل المؤسس")
+                    : editing.slug === "home.spotlight"
+                    ? t("Featured Media (Video / Image)", "وسائط العرض المميز (فيديو / صورة)")
+                    : editing.slug === "home.dna"
+                    ? t("DNA Card Media (Optional Video / Image)", "وسائط بطاقة DNA (فيديو أو صورة اختياري)")
+                    : t("Background", "الخلفية")}
                 </Label>
-                <div className="flex gap-2">
-                  {(["image", "video", "none"] as const).map((tp) => (
-                    <button
-                      key={tp}
-                      type="button"
-                      onClick={() => setBg((b) => ({ ...b, type: tp }))}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium border cursor-pointer transition-colors ${
-                        bg.type === tp
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {tp === "image" ? t("Image", "صورة") : tp === "video" ? t("Video", "فيديو") : t("None", "بدون")}
-                    </button>
-                  ))}
-                </div>
+                
+                {/* Media type selector — only show buttons if more than one type is allowed */}
+                {((editing.mediaTypes ?? (["image", "video", "none"] as const)).length > 1) ? (
+                  <div className="flex gap-2">
+                    {(editing.mediaTypes ?? (["image", "video", "none"] as const)).map((tp) => (
+                      <button
+                        key={tp}
+                        type="button"
+                        onClick={() => {
+                          if (tp === "none" && (bg.url || bg.poster)) {
+                            const confirmed = window.confirm(
+                              isAr
+                                ? "اختيار (بدون) سيقوم بإزالة الفيديو/الصورة الحالية. هل أنت متأكد من المتابعة؟"
+                                : "Selecting (None) will remove the current media. Are you sure you want to proceed?"
+                            );
+                            if (!confirmed) return;
+                          }
+                          setBg((b) => ({
+                            ...b,
+                            type: tp,
+                            ...(tp === "none" ? { url: "", poster: "", publicId: "" } : {}),
+                          }));
+                        }}
+                        className={`px-3 py-1.5 rounded-md text-xs font-medium border cursor-pointer transition-colors ${
+                          bg.type === tp
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {tp === "image" ? t("Image", "صورة") : tp === "video" ? t("Video", "فيديو") : t("None", "بدون")}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 text-xs font-medium text-primary">
+                    <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                    <span>{t("Image only", "صورة فقط")}</span>
+                  </div>
+                )}
+
+                {bg.type === "none" && (
+                  <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-border/80 p-4 text-xs text-muted-foreground bg-muted/20">
+                    <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/60" />
+                    <span>
+                      {t(
+                        "No background media selected — this section will display without video or image.",
+                        "تم اختيار (بدون) — سيعمل هذا القسم بدون أي فيديو أو صورة."
+                      )}
+                    </span>
+                  </div>
+                )}
 
                 {bg.type !== "none" && (
                   <>
-                    {bg.url &&
-                      (bg.type === "video" ? (
-                        <video src={bg.url} className="max-h-40 rounded-md" muted controls />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={bg.url} alt="" className="max-h-40 rounded-md object-contain" />
-                      ))}
+                    {bg.url && (
+                      <div className="grid gap-2 rounded-lg border border-border/70 p-3 bg-muted/10">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {bg.type === "video"
+                              ? t("Current video preview", "معاينة الفيديو الحالي")
+                              : t("Current image preview", "معاينة الصورة الحالية")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const confirmed = window.confirm(
+                                isAr
+                                  ? `هل أنت متأكد من حذف ${bg.type === "video" ? "الفيديو" : "الصورة"}؟`
+                                  : `Are you sure you want to delete this ${bg.type === "video" ? "video" : "image"}?`
+                              );
+                              if (confirmed) {
+                                setBg((b) => ({ ...b, url: "", publicId: "" }));
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs text-destructive hover:underline cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                            {bg.type === "video" ? t("Delete video", "حذف الفيديو") : t("Delete image", "حذف الصورة")}
+                          </button>
+                        </div>
+                        {bg.type === "video" ? (
+                          <video src={bg.url} className="max-h-40 rounded-md" muted controls />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={bg.url} alt="" className="max-h-48 rounded-md object-contain" />
+                        )}
+                      </div>
+                    )}
 
                     <div className="grid gap-1.5">
                       <Label className="text-xs">
-                        {t("Upload new", "رفع ملف جديد")} ({bg.type === "video" ? "video" : "image"})
+                        {editing.slug === "founder.hero"
+                          ? t("Upload profile photo", "رفع صورة البروفايل")
+                          : `${t("Upload new", "رفع ملف جديد")} (${bg.type === "video" ? "video" : "image"})`}
                       </Label>
                       <Input
                         type="file"
@@ -285,27 +399,90 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
                         value={bg.url}
                         dir="ltr"
                         onChange={(e) => setBg((b) => ({ ...b, url: e.target.value }))}
-                        placeholder="/final.mp4 or https://…"
+                        placeholder={editing.slug === "founder.hero" ? "https://res.cloudinary.com/.../photo.jpg" : "/final.mp4 or https://…"}
                       />
                     </div>
 
                     {bg.type === "video" && (
-                      <div className="grid gap-1.5">
-                        <Label className="text-xs">{t("Poster image (optional)", "صورة الغلاف (اختياري)")}</Label>
-                        {bg.poster && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={bg.poster} alt="" className="max-h-24 rounded-md object-contain" />
-                        )}
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          disabled={uploading !== null}
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleUpload(f, "poster");
-                          }}
-                        />
-                      </div>
+                      <>
+                        <div className="grid gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">{t("Poster image (optional)", "صورة الغلاف (اختياري)")}</Label>
+                            {bg.poster && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const confirmed = window.confirm(
+                                    isAr
+                                      ? "هل أنت متأكد من حذف صورة الغلاف؟"
+                                      : "Are you sure you want to delete this poster image?"
+                                  );
+                                  if (confirmed) {
+                                    setBg((b) => ({ ...b, poster: "" }));
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 text-xs text-destructive hover:underline cursor-pointer"
+                              >
+                                <Trash2 size={12} />
+                                {t("Delete poster", "حذف صورة الغلاف")}
+                              </button>
+                            )}
+                          </div>
+                          {bg.poster && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={bg.poster} alt="" className="max-h-24 rounded-md object-contain" />
+                          )}
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploading !== null}
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleUpload(f, "poster");
+                            }}
+                          />
+                        </div>
+
+                        <div className="grid gap-2 rounded-lg border border-border/70 bg-card p-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <Label className="text-xs font-semibold">
+                                {t("Video Sound Mode", "وضع صوت الفيديو")}
+                              </Label>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {t(
+                                  "If Silent, audio is completely locked off and visitors cannot enable sound. If With Sound, audio is enabled with player controls.",
+                                  "إذا تم اختياره (صامت)، سيعمل الفيديو بدون صوت نهائياً ولن يتمكن الزوار من تشغيله. أما (بصوت) فيتيح الصوت مع زر التحكم للزوار."
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setMuted(true)}
+                                className={`px-3.5 py-1.5 rounded-md text-xs font-medium border cursor-pointer transition-colors ${
+                                  muted
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "border-border text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                {t("Silent (Locked)", "صامت (مغلق نهائياً)")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setMuted(false)}
+                                className={`px-3.5 py-1.5 rounded-md text-xs font-medium border cursor-pointer transition-colors ${
+                                  !muted
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "border-border text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                {t("With Sound (Enabled)", "بصوت (متاح للزوار)")}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     {uploading && (
@@ -408,7 +585,24 @@ function MediaFieldEditor({
 
   return (
     <div className="grid gap-2">
-      <Label className="text-sm font-medium">{label}</Label>
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium">{label}</Label>
+        {value && (
+          <button
+            type="button"
+            onClick={() => {
+              const confirmed = window.confirm(
+                t("Are you sure you want to delete this media file?", "هل أنت متأكد من حذف هذا الملف؟")
+              );
+              if (confirmed) onChange("");
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-destructive hover:underline cursor-pointer"
+          >
+            <Trash2 size={13} />
+            {t("Delete media", "حذف الملف")}
+          </button>
+        )}
+      </div>
       {value &&
         (isVideo ? (
           <video src={value} className="max-h-40 rounded-md" muted controls />
@@ -507,11 +701,16 @@ function FieldEditor({
     onChange({ ...v, [lang]: arr });
   };
   const addRow = () => onChange({ en: [...(v.en ?? []), {}], ar: [...(v.ar ?? []), {}] });
-  const removeRow = (i: number) =>
+  const removeRow = (i: number) => {
+    const confirmed = window.confirm(
+      t("Are you sure you want to delete this row?", "هل أنت متأكد من حذف هذا العنصر؟")
+    );
+    if (!confirmed) return;
     onChange({
       en: (v.en ?? []).filter((_, idx) => idx !== i),
       ar: (v.ar ?? []).filter((_, idx) => idx !== i),
     });
+  };
 
   return (
     <div className="grid gap-3">
