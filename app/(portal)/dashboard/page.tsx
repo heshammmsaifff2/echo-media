@@ -16,5 +16,8 @@ export default async function DashboardPage() {
     .eq("client_id", profile!.id)
     .order("created_at", { ascending: false });
 
-  return <ClientDashboard orders={orders || []} profile={profile!} />;
+  // Final files stay out of the page payload until the order is unlocked.
+  const safeOrders = (orders || []).map((o) => (o.is_confirmed_by_admin ? o : { ...o, delivery_files: [] }));
+
+  return <ClientDashboard orders={safeOrders} profile={profile!} />;
 }

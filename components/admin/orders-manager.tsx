@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Eye, Check, Loader2, ExternalLink, Lock, Unlock, Timer, AlertTriangle,
   Upload, FileArchive, FileVideo, FileImage, FileText, Trash2, Link as LinkIcon,
-  Banknote, Receipt, Clock, Pencil, XCircle, Search, X, User,
+  Banknote, Receipt, Clock, Pencil, XCircle, Search, X, User, ScrollText,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -55,6 +55,9 @@ type Order = {
   delivery_files: string[];
   delivery_unlocked_at: string | null;
   delivery_expired: boolean;
+  preview_files: string[];
+  terms: string | null;
+  terms_accepted_at: string | null;
   created_at: string;
   profiles: { full_name: string; email: string } | null;
   order_payments: Payment[];
@@ -76,10 +79,12 @@ export function OrdersManager({
   initialOrders,
   clients,
   initialClientId = "",
+  defaultTerms = "",
 }: {
   initialOrders: Order[];
   clients: Client[];
   initialClientId?: string;
+  defaultTerms?: string;
 }) {
   const [orders, setOrders] = useState<Order[]>(
     initialOrders.map((o) => ({ ...o, order_payments: o.order_payments || [] }))
@@ -141,7 +146,7 @@ export function OrdersManager({
   const activeClient = clients.find((c) => c.id === selectedClientId);
 
   const [editOrder, setEditOrder] = useState<Order | null>(null);
-  const [editForm, setEditForm] = useState({ client_id: "", project_title: "", project_description: "", total_amount: "" });
+  const [editForm, setEditForm] = useState({ client_id: "", project_title: "", project_description: "", total_amount: "", terms: "" });
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
   const [orderError, setOrderError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -152,19 +157,37 @@ export function OrdersManager({
   const { isAr } = useI18n();
   const currency = isAr ? "ج.م" : "EGP";
 
-  const [newOrder, setNewOrder] = useState({ client_id: "", project_title: "", project_description: "", total_amount: "" });
+  const emptyOrder = { client_id: "", project_title: "", project_description: "", total_amount: "", terms: "" };
+  const [newOrder, setNewOrder] = useState(emptyOrder);
+  const [savedTerms, setSavedTerms] = useState(defaultTerms);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [termsDraft, setTermsDraft] = useState(defaultTerms);
 
   useEffect(() => {
-    if (createOpen && selectedClientId && selectedClientId !== "all" && !newOrder.client_id) {
-      setNewOrder((prev) => ({ ...prev, client_id: selectedClientId }));
-    }
-  }, [createOpen, selectedClientId]);
+    if (!createOpen) return;
+    setNewOrder((prev) => ({
+      ...prev,
+      client_id: prev.client_id || (selectedClientId !== "all" ? selectedClientId : ""),
+      terms: prev.terms || savedTerms,
+    }));
+  }, [createOpen, selectedClientId, savedTerms]);
+
+  const saveDefaultTerms = async () => {
+    setLoading(true);
+    const { error } = await createClient().from("site_settings")
+      .upsert({ key: "order_terms", value: { text: termsDraft } }, { onConflict: "key" });
+    setLoading(false);
+    if (error) { alert(error.message); return; }
+    setSavedTerms(termsDraft);
+    setTermsOpen(false);
+  };
 
   // Payment dialog: either confirming a client's receipt, or adding a cash payment.
   const [payDialog, setPayDialog] = useState<{ order: Order; payment: Payment | null } | null>(null);
   const [payAmount, setPayAmount] = useState("");
 
-  const [deliveryForm, setDeliveryForm] = useState<{ delivery_type: string; files: string[]; manualUrl: string }>({ delivery_type: "direct_files", files: [], manualUrl: "" });
+  const [deliveryForm, setDeliveryForm] = useState<{ delivery_type: string; files: string[]; manualUrl: string; previews: string[] }>({ delivery_type: "direct_files", files: [], manualUrl: "", previews: [] });
+  const [uploadingPreviews, setUploadingPreviews] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
 
@@ -175,7 +198,7 @@ export function OrdersManager({
     setOrderError("");
     setEditOrder(order);
     setEditForm({ client_id: order.client_id, project_title: order.project_title,
-      project_description: order.project_description || "", total_amount: String(order.total_amount) });
+      project_description: order.project_description || "", total_amount: String(order.total_amount), terms: order.terms || "" });
   };
 
   const saveOrderEdit = async () => {
@@ -199,6 +222,8 @@ export function OrdersManager({
         project_description: editForm.project_description.trim() || null, total_amount: total,
         payment_status: fullyPaid ? "fully_paid" : editOrder.order_payments.some((p) => !p.is_confirmed) ? "receipt_uploaded" : "deposit_paid",
         is_confirmed_by_admin: fullyPaid,
+        // Accepted terms are a signed record and stay frozen.
+        ...(editOrder.terms_accepted_at ? {} : { terms: editForm.terms.trim() || null }),
         delivery_unlocked_at: fullyPaid ? editOrder.delivery_unlocked_at || new Date().toISOString() : null,
       };
       const { data, error } = await createClient().from("client_orders").update(patch).eq("id", editOrder.id).is("cancelled_at", null).select().single();
@@ -250,9 +275,10 @@ export function OrdersManager({
       project_title: newOrder.project_title,
       project_description: newOrder.project_description || null,
       total_amount: parseFloat(newOrder.total_amount) || 0,
+      terms: newOrder.terms.trim() || null,
     });
     setCreateOpen(false);
-    setNewOrder({ client_id: "", project_title: "", project_description: "", total_amount: "" });
+    setNewOrder(emptyOrder);
     setLoading(false);
     router.refresh();
   };
@@ -332,6 +358,22 @@ export function OrdersManager({
       e.target.value = "";
     }
   };
+  const handlePreviewUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingPreviews(true);
+    try {
+      const urls: string[] = [];
+      for (let i = 0; i < files.length; i++) urls.push((await uploadToCloudinary(files[i], "echo/previews")).url);
+      setDeliveryForm((prev) => ({ ...prev, previews: [...prev.previews, ...urls] }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : (isAr ? "فشل رفع المعاينة" : "Failed to upload preview"));
+    } finally {
+      setUploadingPreviews(false);
+      e.target.value = "";
+    }
+  };
+  const removePreview = (index: number) => setDeliveryForm((prev) => ({ ...prev, previews: prev.previews.filter((_, i) => i !== index) }));
   const removeDeliveryFile = (index: number) => setDeliveryForm((prev) => ({ ...prev, files: prev.files.filter((_, i) => i !== index) }));
   const addManualUrl = () => {
     const trimmed = deliveryForm.manualUrl.trim();
@@ -348,8 +390,8 @@ export function OrdersManager({
     const hasDrive = finalFiles.some((f) => f.includes("drive.google.com") || f.includes("docs.google.com"));
     if (deliveryForm.delivery_type === "google_drive_link" && !hasDrive && finalFiles.length > 0) determinedType = "direct_files";
     else if (deliveryForm.delivery_type === "direct_files" && hasDrive && finalFiles.length === 1) determinedType = "google_drive_link";
-    await supabase.from("client_orders").update({ delivery_type: determinedType, delivery_files: finalFiles }).eq("id", deliveryDialog.id);
-    patchOrder(deliveryDialog.id, { delivery_type: determinedType, delivery_files: finalFiles });
+    await supabase.from("client_orders").update({ delivery_type: determinedType, delivery_files: finalFiles, preview_files: deliveryForm.previews }).eq("id", deliveryDialog.id);
+    patchOrder(deliveryDialog.id, { delivery_type: determinedType, delivery_files: finalFiles, preview_files: deliveryForm.previews });
     setDeliveryDialog(null);
     setLoading(false);
     router.refresh();
@@ -362,21 +404,32 @@ export function OrdersManager({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{isAr ? "طلبات العملاء" : "Client Orders"}</h1>
+        <div className="flex items-center gap-2">
+        <Dialog open={termsOpen} onOpenChange={(o) => { setTermsOpen(o); if (o) setTermsDraft(savedTerms); }}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="gap-2 cursor-pointer"><ScrollText size={16} /> {isAr ? "الشروط الافتراضية" : "Default terms"}</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader><DialogTitle>{isAr ? "بنود العقد الافتراضية" : "Default contract terms"}</DialogTitle></DialogHeader>
+            <div className="grid gap-3 py-2">
+              <p className="text-sm text-muted-foreground">{isAr ? "تُنسخ هذه البنود تلقائياً في كل طلب جديد، ويمكنك تعديلها لكل طلب على حدة. اكتب كل بند في سطر." : "Copied into every new order; you can still adjust them per order. One clause per line."}</p>
+              <Textarea rows={12} value={termsDraft} onChange={(e) => setTermsDraft(e.target.value)} />
+              <Button onClick={saveDefaultTerms} disabled={loading} className="cursor-pointer">
+                {loading && <Loader2 size={16} className="animate-spin me-2" />}{isAr ? "حفظ البنود" : "Save terms"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 cursor-pointer"><Plus size={16} /> {isAr ? "طلب جديد" : "New Order"}</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{isAr ? "إنشاء طلب جديد" : "Create New Order"}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>{isAr ? "العميل" : "Client"}</Label>
-                <Select value={newOrder.client_id} onValueChange={(v) => setNewOrder({ ...newOrder, client_id: v })}>
-                  <SelectTrigger><SelectValue placeholder={isAr ? "اختر عميل" : "Select client"} /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.full_name || c.email}</SelectItem>))}
-                  </SelectContent>
-                </Select>
+                <ClientPicker clients={clients} value={newOrder.client_id} onChange={(v) => setNewOrder({ ...newOrder, client_id: v })} isAr={isAr} />
               </div>
               <div className="grid gap-2">
                 <Label>{isAr ? "عنوان المشروع" : "Project Title"}</Label>
@@ -391,13 +444,19 @@ export function OrdersManager({
                 <Input type="number" value={newOrder.total_amount} onChange={(e) => setNewOrder({ ...newOrder, total_amount: e.target.value })} />
                 <p className="text-xs text-muted-foreground">{isAr ? "تُسجَّل الدفعات لاحقاً واحدة واحدة." : "Payments are recorded later, one installment at a time."}</p>
               </div>
-              <Button onClick={handleCreateOrder} disabled={loading} className="cursor-pointer">
+              <div className="grid gap-2">
+                <Label>{isAr ? "بنود العقد" : "Contract terms"}</Label>
+                <Textarea value={newOrder.terms} onChange={(e) => setNewOrder({ ...newOrder, terms: e.target.value })} rows={5} placeholder={isAr ? "اتركها فارغة لو الطلب بدون عقد" : "Leave empty for no contract"} />
+                <p className="text-xs text-muted-foreground">{isAr ? "العميل لازم يوافق على البنود قبل ما يقدر يرفع إيصال دفع." : "The client must accept these before uploading a payment receipt."}</p>
+              </div>
+              <Button onClick={handleCreateOrder} disabled={loading || !newOrder.client_id || !newOrder.project_title} className="cursor-pointer">
                 {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
                 {isAr ? "إنشاء الطلب" : "Create Order"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* ── Client & Search Filter Bar ── */}
@@ -649,7 +708,20 @@ export function OrdersManager({
                     </div>
                   )}
 
-                  <div className="mb-4 text-xs flex items-center gap-2">
+                  {order.terms && (
+                    <div className="mb-3 text-xs">
+                      {order.terms_accepted_at ? (
+                        <span className="inline-flex items-center gap-1.5 text-green-500"><ScrollText size={13} /> {isAr ? `وافق العميل على البنود · ${fmtDate(order.terms_accepted_at)}` : `Terms accepted · ${fmtDate(order.terms_accepted_at)}`}</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-amber-500"><ScrollText size={13} /> {isAr ? "بانتظار موافقة العميل على البنود" : "Awaiting client's acceptance of terms"}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mb-4 text-xs flex flex-wrap items-center gap-2">
+                    {(order.preview_files || []).length > 0 && (
+                      <Badge variant="outline" className="gap-1.5 py-1"><Eye size={12} /> {isAr ? `${order.preview_files.length} معاينة ظاهرة للعميل` : `${order.preview_files.length} preview(s) visible`}</Badge>
+                    )}
                     {order.delivery_files && order.delivery_files.length > 0 ? (
                       <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5 py-1"><FileText size={12} /> {isAr ? `تم إرفاق ${order.delivery_files.length} ملف(ات)` : `${order.delivery_files.length} file(s) attached`}</Badge>
                     ) : (
@@ -662,7 +734,7 @@ export function OrdersManager({
 
                   <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" disabled={!!order.cancelled_at || loading}
                     onClick={() => {
-                      setDeliveryForm({ delivery_type: order.delivery_type === "google_drive_link" ? "google_drive_link" : "direct_files", files: order.delivery_files || [], manualUrl: "" });
+                      setDeliveryForm({ delivery_type: order.delivery_type === "google_drive_link" ? "google_drive_link" : "direct_files", files: order.delivery_files || [], manualUrl: "", previews: order.preview_files || [] });
                       setShowManualInput(false);
                       setDeliveryDialog(order);
                     }}>
@@ -681,13 +753,15 @@ export function OrdersManager({
           <DialogHeader><DialogTitle>{isAr ? "تعديل الطلب" : "Edit order"}</DialogTitle></DialogHeader>
           <form className="grid gap-5" onSubmit={(event) => { event.preventDefault(); saveOrderEdit(); }}>
             <div className="grid gap-2"><Label htmlFor="edit-order-client">{isAr ? "العميل" : "Client"}</Label>
-              <select id="edit-order-client" value={editForm.client_id} disabled={loading || !!editOrder?.order_payments.length} className="h-12 rounded-md border bg-background px-3" onChange={(event) => setEditForm({ ...editForm, client_id: event.target.value })}>
-                {clients.map((client) => <option key={client.id} value={client.id}>{client.full_name || client.email}</option>)}
-              </select>
+              <ClientPicker clients={clients} value={editForm.client_id} disabled={loading || !!editOrder?.order_payments.length} onChange={(v) => setEditForm({ ...editForm, client_id: v })} isAr={isAr} />
             </div>
             <div className="grid gap-2"><Label htmlFor="edit-order-title">{isAr ? "عنوان المشروع" : "Project title"}</Label><Input id="edit-order-title" required className="h-12" value={editForm.project_title} disabled={loading} onChange={(event) => setEditForm({ ...editForm, project_title: event.target.value })} /></div>
             <div className="grid gap-2"><Label htmlFor="edit-order-description">{isAr ? "وصف المشروع" : "Project description"}</Label><Textarea id="edit-order-description" rows={6} value={editForm.project_description} disabled={loading} onChange={(event) => setEditForm({ ...editForm, project_description: event.target.value })} /></div>
             <div className="grid gap-2"><Label htmlFor="edit-order-total">{isAr ? "الإجمالي" : "Total"} ({currency})</Label><Input id="edit-order-total" type="number" min={editOrder ? confirmedTotal(editOrder.order_payments) : 0} step="0.01" required className="h-12" value={editForm.total_amount} disabled={loading} onChange={(event) => setEditForm({ ...editForm, total_amount: event.target.value })} /></div>
+            <div className="grid gap-2"><Label htmlFor="edit-order-terms">{isAr ? "بنود العقد" : "Contract terms"}</Label>
+              <Textarea id="edit-order-terms" rows={5} value={editForm.terms} disabled={loading || !!editOrder?.terms_accepted_at} onChange={(event) => setEditForm({ ...editForm, terms: event.target.value })} />
+              {editOrder?.terms_accepted_at && <p className="text-xs text-muted-foreground">{isAr ? "العميل وافق على البنود، فلا يمكن تعديلها." : "The client already accepted these terms, so they are locked."}</p>}
+            </div>
             <p className="text-sm text-muted-foreground">{isAr ? "الدفعات المسجلة محفوظة. يُعاد حساب المتبقي وإتاحة التسليم حسب الإجمالي الجديد." : "Recorded payments are preserved. Balance and delivery access follow the updated total."}</p>
             {orderError && <p role="alert" className="text-sm text-destructive">{orderError}</p>}
             <div className="flex gap-3"><Button type="submit" disabled={loading}>{loading && <Loader2 size={16} className="me-2 animate-spin" />}{isAr ? "حفظ التعديلات" : "Save changes"}</Button><Button type="button" variant="outline" disabled={loading} onClick={() => setEditOrder(null)}>{isAr ? "رجوع" : "Back"}</Button></div>
@@ -750,6 +824,23 @@ export function OrdersManager({
                   <div className="min-w-0 flex-1"><p className="text-xs font-semibold text-foreground">{isAr ? "رابط Google Drive" : "Google Drive Link"}</p><p className="text-[11px] text-muted-foreground truncate">{isAr ? "للمشاريع والملفات المضغوطة" : "For projects & archives"}</p></div>
                 </button>
               </div>
+            </div>
+
+            <div className="grid gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">{isAr ? "معاينة قبل الدفع" : "Preview before payment"}</Label>
+                <Badge variant="secondary" className="text-xs">{deliveryForm.previews.length}</Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">{isAr ? "صور أو فيديوهات (يفضل بعلامة مائية أو جودة أقل) يشوفها العميل للمشاهدة فقط قبل اكتمال الدفع." : "Images or videos (ideally watermarked or low-res) the client can view — not download — before paying in full."}</p>
+              {deliveryForm.previews.map((url, idx) => (
+                <div key={url + idx} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-card p-2">
+                  <p className="min-w-0 flex-1 truncate text-sm" title={url}>{getDeliveryFileMeta(url, isAr).name}</p>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">{isAr ? "معاينة" : "Open"}</a>
+                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive cursor-pointer" onClick={() => removePreview(idx)}><Trash2 size={14} /></Button>
+                </div>
+              ))}
+              <Input type="file" multiple accept="video/*,image/*" disabled={uploadingPreviews || loading} onChange={handlePreviewUpload} className="cursor-pointer bg-background" />
+              {uploadingPreviews && <p className="text-xs text-primary flex items-center gap-1.5"><Loader2 size={13} className="animate-spin" /> {isAr ? "جاري رفع المعاينة..." : "Uploading preview..."}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -816,11 +907,54 @@ export function OrdersManager({
 
             <div className="flex justify-end gap-2 pt-3 border-t">
               <Button variant="outline" onClick={() => setDeliveryDialog(null)} disabled={loading} className="cursor-pointer">{isAr ? "إلغاء" : "Cancel"}</Button>
-              <Button onClick={saveDelivery} disabled={loading || uploadingFiles} className="cursor-pointer">{loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}{isAr ? "حفظ التسليم" : "Save Delivery"}</Button>
+              <Button onClick={saveDelivery} disabled={loading || uploadingFiles || uploadingPreviews} className="cursor-pointer">{loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}{isAr ? "حفظ التسليم" : "Save Delivery"}</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Searchable client chooser — filters by name or email as you type. */
+function ClientPicker({ clients, value, onChange, isAr, disabled }: {
+  clients: Client[]; value: string; onChange: (id: string) => void; isAr: boolean; disabled?: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const selected = clients.find((c) => c.id === value);
+  const q = query.toLowerCase().trim();
+  const matches = q
+    ? clients.filter((c) => (c.full_name || "").toLowerCase().includes(q) || (c.email || "").toLowerCase().includes(q))
+    : clients;
+
+  return (
+    <div className="grid gap-2">
+      {selected && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+          <User size={14} className="shrink-0 text-primary" />
+          <span className="truncate font-medium">{selected.full_name || selected.email}</span>
+          {selected.full_name && <span className="truncate text-xs text-muted-foreground">{selected.email}</span>}
+        </div>
+      )}
+      {!disabled && (
+        <>
+          <div className="relative">
+            <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={isAr ? "ابحث بالاسم أو الإيميل…" : "Search by name or email…"} className="ps-9" />
+          </div>
+          <div className="max-h-48 overflow-y-auto rounded-lg border border-border/60 divide-y divide-border/50">
+            {matches.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-muted-foreground">{isAr ? "لا يوجد عميل بهذا الاسم" : "No matching client"}</p>
+            ) : matches.map((c) => (
+              <button key={c.id} type="button" onClick={() => { onChange(c.id); setQuery(""); }}
+                className={`flex w-full flex-col items-start px-3 py-2 text-start text-sm transition-colors cursor-pointer hover:bg-muted/50 ${c.id === value ? "bg-primary/10" : ""}`}>
+                <span className="font-medium">{c.full_name || c.email}</span>
+                {c.full_name && <span className="text-xs text-muted-foreground">{c.email}</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

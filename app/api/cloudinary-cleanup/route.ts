@@ -16,7 +16,7 @@ export async function GET() {
 
     const [portfolioRes, ordersRes, sectionsRes, paymentsRes] = await Promise.all([
       supabase.from("portfolio_items").select("media_url, thumbnail_url"),
-      supabase.from("client_orders").select("delivery_files, receipt_url"),
+      supabase.from("client_orders").select("delivery_files, preview_files, receipt_url"),
       supabase.from("section_content").select("bg_url, bg_poster_url, content"),
       supabase.from("order_payments").select("receipt_url"),
     ]);
@@ -50,6 +50,7 @@ export async function GET() {
     (ordersRes.data || []).forEach((order) => {
       addUrl(order.receipt_url);
       (order.delivery_files || []).forEach(addUrl);
+      (order.preview_files || []).forEach(addUrl);
     });
 
     // Editable section backgrounds/posters, in-content media, and receipts.

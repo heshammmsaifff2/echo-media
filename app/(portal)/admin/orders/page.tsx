@@ -20,11 +20,18 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     .select("id, full_name, email")
     .eq("role", "client");
 
+  const { data: termsRow } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("key", "order_terms")
+    .maybeSingle();
+
   return (
     <OrdersManager
       initialOrders={orders || []}
       clients={clients || []}
       initialClientId={initialClientId}
+      defaultTerms={(termsRow?.value as { text?: string } | null)?.text || ""}
     />
   );
 }

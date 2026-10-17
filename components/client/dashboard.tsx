@@ -11,11 +11,12 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import Image from "next/image";
 import {
   Lock, Unlock, Loader2, Check, Download, ExternalLink, FileText, CreditCard,
   Clock, Timer, AlertTriangle, Eye, Trash2, FileVideo, FileArchive, FileImage,
-  Receipt, Banknote, Plus, Info, X, CheckCircle2, Smartphone,
+  Receipt, Banknote, Plus, Info, X, CheckCircle2, Smartphone, ScrollText,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type Payment, confirmedTotal, remainingBalance, isFullyPaid } from "@/lib/payments";
@@ -68,6 +69,9 @@ type Order = {
   delivery_files: string[];
   delivery_unlocked_at: string | null;
   delivery_expired: boolean;
+  preview_files: string[];
+  terms: string | null;
+  terms_accepted_at: string | null;
   created_at: string;
   order_payments: Payment[];
 };
@@ -423,6 +427,8 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   };
 
   const cancelled = !!order.cancelled_at;
+  const needsTerms = !!order.terms && !order.terms_accepted_at;
+  const previews = order.preview_files || [];
   const isLocked = cancelled || !order.is_confirmed_by_admin;
   const hasDelivery = (order.delivery_files || []).length > 0;
   const isExpired = order.delivery_expired || (remaining !== null && remaining <= 0 && hasDelivery);
@@ -467,12 +473,19 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
           </div>
         </div>
 
+        {order.terms && !cancelled && (
+          <TermsBox order={order} isAr={isAr} onAccepted={() => router.refresh()} />
+        )}
+
         {/* Payment history + submit a receipt */}
         <Separator className="my-4" />
         <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-sm">{isAr ? "الدفعات" : "Payments"}</h4>
-            {!fullyPaid && !cancelled && (
+            {!fullyPaid && !cancelled && needsTerms && (
+              <span className="text-xs text-amber-500">{isAr ? "وافق على البنود أولاً لرفع إيصال" : "Accept the terms first to upload a receipt"}</span>
+            )}
+            {!fullyPaid && !cancelled && !needsTerms && (
               <Dialog open={addOpen} onOpenChange={setAddOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="h-8 gap-1.5 cursor-pointer"><Plus size={14} /> {isAr ? "رفع إيصال دفعة" : "Upload a receipt"}</Button>
@@ -562,6 +575,22 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
             <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center">
               <Lock size={32} className="mx-auto mb-3 text-amber-500/50" />
               <p className="text-sm font-medium text-amber-500">{isAr ? "تُفتح ملفات التسليم بعد سداد المبلغ بالكامل وتأكيد الأدمن." : "Deliverables unlock once the full amount is paid and confirmed."}</p>
+              {previews.length > 0 && (
+                <div className="mt-5 text-start">
+                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium"><Eye size={15} /> {isAr ? "معاينة من الشغل" : "Work preview"}</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {previews.map((url, i) => (
+                      getDeliveryFileMeta(url, isAr).isVideo ? (
+                        <video key={i} src={url} controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} playsInline preload="metadata" className="w-full rounded-lg bg-black" />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={url} alt="" draggable={false} onContextMenu={(e) => e.preventDefault()} className="w-full rounded-lg object-cover select-none" />
+                      )
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">{isAr ? "للمشاهدة فقط — النسخة النهائية تتاح بعد اكتمال الدفع." : "View only — the final files unlock after full payment."}</p>
+                </div>
+              )}
             </div>
           ) : hasDelivery ? (
             <div>
@@ -973,5 +1002,44 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function TermsBox({ order, isAr, onAccepted }: { order: Order; isAr: boolean; onAccepted: () => void }) {
+  const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const accepted = !!order.terms_accepted_at;
+
+  const accept = async () => {
+    setSaving(true);
+    setError("");
+    const { error } = await createClient().from("client_orders")
+      .update({ terms_accepted_at: new Date().toISOString() })
+      .eq("id", order.id).is("terms_accepted_at", null);
+    setSaving(false);
+    if (error) { setError(error.message); return; }
+    onAccepted();
+  };
+
+  return (
+    <div className={`mb-2 rounded-xl border p-4 ${accepted ? "border-green-500/30 bg-green-500/5" : "border-amber-500/40 bg-amber-500/5"}`}>
+      <h4 className="mb-2 flex items-center gap-2 text-sm font-medium"><ScrollText size={16} /> {isAr ? "بنود الاتفاق" : "Agreement terms"}</h4>
+      <div className="max-h-64 overflow-y-auto whitespace-pre-line rounded-lg border border-border/50 bg-card p-3 text-sm leading-relaxed">{order.terms}</div>
+      {accepted ? (
+        <p className="mt-3 flex items-center gap-1.5 text-sm text-green-500"><CheckCircle2 size={15} /> {isAr ? "تمت الموافقة على البنود" : "Terms accepted"} · {new Date(order.terms_accepted_at!).toLocaleString(isAr ? "ar-EG" : "en-GB")}</p>
+      ) : (
+        <div className="mt-3 grid gap-3">
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+            <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} className="mt-0.5" />
+            <span>{isAr ? "قرأت البنود السابقة وأوافق عليها." : "I have read and agree to the terms above."}</span>
+          </label>
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <Button onClick={accept} disabled={!agreed || saving} className="w-fit cursor-pointer">
+            {saving && <Loader2 size={16} className="animate-spin me-2" />}{isAr ? "تأكيد الموافقة" : "Confirm agreement"}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
