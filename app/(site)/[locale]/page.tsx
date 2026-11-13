@@ -9,6 +9,7 @@ import { ShowreelSection, LightingSection } from "@/components/sections/showreel
 import { FeaturedWork } from "@/components/sections/featured-work";
 import { ClientsSection } from "@/components/sections/process";
 import { DnaSection } from "@/components/sections/dna";
+import { DnaServicesSection } from "@/components/sections/dna-services";
 import { CtaSection } from "@/components/sections/closing";
 
 type Params = { params: Promise<{ locale: string }> };
@@ -44,19 +45,45 @@ export default async function Home({ params }: Params) {
         }}
       />
 
-      <HeroSection />
+      <AmbientAurora />
 
-      {/* Unified, living ambient background across all homepage sections after Hero */}
-      <div className="relative isolate">
-        <AmbientAurora />
-        <ShowreelSection />
-        <LightingSection />
-        <FeaturedWork items={featured || []} categories={catsRes.data || []} />
-        <SpotlightSection />
-        <ClientsSection />
-        <DnaSection />
-        <CtaSection />
-      </div>
+      <main className="relative isolate flex flex-col w-full">
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <HeroSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <ShowreelSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <LightingSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <FeaturedWork items={featured || []} categories={catsRes.data || []} />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <SpotlightSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <DnaServicesSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <ClientsSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <DnaSection />
+        </div>
+
+        <div className="relative w-full transition-transform duration-500 ease-out">
+          <CtaSection />
+        </div>
+      </main>
     </>
   );
 }

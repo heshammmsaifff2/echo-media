@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Link } from "@/components/link";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -13,26 +14,55 @@ import {
   type Contact,
 } from "@/lib/brand";
 import { Logo } from "@/components/logo";
-import { Mail, Phone, MapPin, MessageCircle, ArrowUpRight } from "lucide-react";
+import { Mail, Phone, MapPin, MessageCircle, ArrowUpRight, Camera } from "lucide-react";
 
-export function Footer({ contact = defaultContact }: { contact?: Contact }) {
+export function Footer({
+  contact = defaultContact,
+  studioContact,
+}: {
+  contact?: Contact;
+  studioContact?: Contact;
+}) {
   const { pick, isAr } = useI18n();
+  const pathname = usePathname() || "";
+  const isStudioPage = pathname.includes("/art-house-studio");
+  const activeContact = isStudioPage && studioContact ? studioContact : contact;
   const year = new Date().getFullYear();
 
-  const address = contact.address ? pick(contact.address).trim() : "";
-  const locality = contact.location ? pick(contact.location).trim() : "";
+  const address = activeContact.address ? pick(activeContact.address).trim() : "";
+  const locality = activeContact.location ? pick(activeContact.location).trim() : "";
 
   return (
     <footer className="relative border-t border-white/10 bg-background">
       <div className="mx-auto max-w-[1400px] px-6 py-20 sm:px-10 sm:py-24">
         <div className="grid grid-cols-1 gap-14 lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <Link href="/" aria-label="Echo Media Production — home" className="cursor-pointer">
+            <Link
+              href={isStudioPage ? "/art-house-studio" : "/"}
+              aria-label={isStudioPage ? "Art House Studio" : "Echo Media Production — home"}
+              className="cursor-pointer"
+            >
               <Logo variant="white" height={30} />
             </Link>
-            <p className="mt-6 max-w-sm leading-relaxed text-muted-foreground">
-              {pick(footer.tagline)}
-            </p>
+
+            {isStudioPage ? (
+              <div className="mt-6 space-y-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--echo-accent)/0.3)] bg-[hsl(var(--echo-accent)/0.1)] px-3 py-1 text-xs font-semibold text-[hsl(var(--echo-accent))]">
+                  <Camera size={13} />
+                  <span>{isAr ? "استوديو آرت هاوس" : "Art House Studio"}</span>
+                </span>
+                <p className="max-w-sm leading-relaxed text-muted-foreground text-sm">
+                  {isAr
+                    ? "استوديو احترافي مجهز بالكامل للإنتاج السينمائي والبودكاست والتصوير الفوتوغرافي."
+                    : "Fully equipped creative studio space for commercial video, multicam podcasts, and photography."}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-6 max-w-sm leading-relaxed text-muted-foreground">
+                {pick(footer.tagline)}
+              </p>
+            )}
+
             <p
               className="mt-8 text-lg font-light tracking-[0.16em] text-[hsl(var(--echo-accent))]"
               dir="ltr"
@@ -66,19 +96,25 @@ export function Footer({ contact = defaultContact }: { contact?: Contact }) {
           </div>
 
           <div className="lg:col-span-4">
-            <h3 className="eyebrow mb-6">{isAr ? "تواصل" : "Contact"}</h3>
+            <h3 className="eyebrow mb-6">
+              {isStudioPage
+                ? (isAr ? "تواصل مع الاستوديو" : "Studio Contact")
+                : (isAr ? "تواصل" : "Contact")}
+            </h3>
             <ul className="space-y-4">
-              <li>
-                <a
-                  href={`mailto:${contact.email}`}
-                  className="inline-flex items-center gap-3 text-muted-foreground transition-colors hover:text-bright cursor-pointer"
-                >
-                  <Mail size={15} className="shrink-0" />
-                  <span dir="ltr">{contact.email}</span>
-                </a>
-              </li>
+              {activeContact.email && (
+                <li>
+                  <a
+                    href={`mailto:${activeContact.email}`}
+                    className="inline-flex items-center gap-3 text-muted-foreground transition-colors hover:text-bright cursor-pointer"
+                  >
+                    <Mail size={15} className="shrink-0" />
+                    <span dir="ltr">{activeContact.email}</span>
+                  </a>
+                </li>
+              )}
 
-              {contact.phones.map((phone) => (
+              {(activeContact.phones || []).map((phone) => (
                 <li key={phone.number} className="flex items-center gap-3">
                   <Phone size={15} className="shrink-0 text-muted-foreground" />
                   <a
@@ -105,12 +141,12 @@ export function Footer({ contact = defaultContact }: { contact?: Contact }) {
                 </li>
               ))}
 
-              {/* Address is optional — rendered only when contact.json has one. */}
+              {/* Address is optional — rendered only when contact has one. */}
               {(address || locality) && (
                 <li>
-                  {contact.mapUrl ? (
+                  {activeContact.mapUrl ? (
                     <a
-                      href={contact.mapUrl}
+                      href={activeContact.mapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-start gap-3 text-muted-foreground transition-colors hover:text-bright cursor-pointer"
@@ -142,9 +178,9 @@ export function Footer({ contact = defaultContact }: { contact?: Contact }) {
               )}
             </ul>
 
-            {contact.social.length > 0 && (
+            {(activeContact.social || []).length > 0 && (
               <div className="mt-8 flex flex-wrap gap-2">
-                {contact.social.map((item) => (
+                {activeContact.social.map((item) => (
                   <a
                     key={item.name}
                     href={item.url}
@@ -183,7 +219,7 @@ export function Footer({ contact = defaultContact }: { contact?: Contact }) {
 
         <div className="mt-16 flex flex-col items-start justify-between gap-4 border-t border-border pt-8 sm:flex-row sm:items-center">
           <p className="text-sm text-muted-foreground">
-            © {year} {brand.name}. {pick(footer.rights)}
+            © {year} {isStudioPage ? "Art House Studio & Echo Media Production" : brand.name}. {pick(footer.rights)}
           </p>
         </div>
       </div>

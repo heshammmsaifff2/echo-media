@@ -49,33 +49,57 @@ export function SpotlightSection() {
 
   // Player state
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const modalVideoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(isStrictlySilent);
+  const [isMuted, setIsMuted] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [savedTime, setSavedTime] = useState<number>(0);
 
-  // Sync mute state if CMS setting updates
+  // Sync initial mute preference from CMS, but allow visitor gesture to unmute
   useEffect(() => {
     if (isStrictlySilent) {
       setIsMuted(true);
       if (videoRef.current) {
         videoRef.current.muted = true;
       }
-    } else {
-      setIsMuted(false);
-      if (videoRef.current) {
-        videoRef.current.muted = false;
-      }
     }
   }, [isStrictlySilent]);
+
+  // Open modal without audio duplication
+  const openModal = () => {
+    if (videoRef.current) {
+      setSavedTime(videoRef.current.currentTime);
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+    setIsModalOpen(true);
+  };
+
+  // Close modal and sync time back to inline video
+  const closeModal = () => {
+    if (modalVideoRef.current) {
+      const modalTime = modalVideoRef.current.currentTime;
+      modalVideoRef.current.pause();
+      if (videoRef.current) {
+        videoRef.current.currentTime = modalTime;
+        videoRef.current.play().catch(() => {});
+        setIsPlaying(true);
+      }
+    } else if (videoRef.current) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    }
+    setIsModalOpen(false);
+  };
 
   // Only decode and play video when near/in viewport to keep 60fps scrolling
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isModalOpen) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && !isModalOpen) {
           video.play().catch(() => {});
           setIsPlaying(true);
         } else {
@@ -88,12 +112,12 @@ export function SpotlightSection() {
 
     observer.observe(video);
     return () => observer.disconnect();
-  }, [mediaUrl]);
+  }, [mediaUrl, isModalOpen]);
 
   // Handle ESC key to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsModalOpen(false);
+      if (e.key === "Escape") closeModal();
     };
     if (isModalOpen) {
       document.body.style.overflow = "hidden";
@@ -119,7 +143,7 @@ export function SpotlightSection() {
   };
 
   const toggleSound = () => {
-    if (isStrictlySilent || !videoRef.current) return;
+    if (!videoRef.current) return;
     const nextMuted = !isMuted;
     videoRef.current.muted = nextMuted;
     setIsMuted(nextMuted);
@@ -205,7 +229,7 @@ export function SpotlightSection() {
                     {/* Interactive overlay controls */}
                     <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex items-center justify-between gap-4 z-10 transition-opacity duration-300">
                       
-                      {/* Left: Play / Pause & (Conditional) Sound Toggle */}
+                      {/* Left: Play / Pause & Sound Toggle */}
                       <div className="flex items-center gap-2.5 sm:gap-3">
                         <button
                           type="button"
@@ -216,33 +240,30 @@ export function SpotlightSection() {
                           {isPlaying ? <Pause size={18} /> : <Play size={18} className="translate-x-0.5" />}
                         </button>
 
-                        {/* Sound Toggle is strictly hidden if admin configured video as silent */}
-                        {!isStrictlySilent && (
-                          <button
-                            type="button"
-                            onClick={toggleSound}
-                            aria-label={isMuted ? (isAr ? "تشغيل الصوت" : "Unmute") : (isAr ? "كتم الصوت" : "Mute")}
-                            className="flex items-center gap-2 rounded-full border border-white/20 bg-[hsl(var(--echo-base)/0.9)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-medium text-white transition-all duration-300 hover:scale-105 hover:bg-[hsl(var(--echo-base)/1)] cursor-pointer"
-                          >
-                            {isMuted ? (
-                              <>
-                                <VolumeX size={16} className="text-muted-foreground" />
-                                <span className="hidden sm:inline">{isAr ? "صامت (اضغط للتشغيل)" : "Muted"}</span>
-                              </>
-                            ) : (
-                              <>
-                                <Volume2 size={16} className="text-[hsl(var(--echo-accent))]" />
-                                <span className="hidden sm:inline">{isAr ? "الصوت مفعّل" : "Sound On"}</span>
-                              </>
-                            )}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={toggleSound}
+                          aria-label={isMuted ? (isAr ? "تشغيل الصوت" : "Unmute") : (isAr ? "كتم الصوت" : "Mute")}
+                          className="flex items-center gap-2 rounded-full border border-white/20 bg-[hsl(var(--echo-base)/0.9)] px-3.5 py-2 sm:px-4 sm:py-2.5 text-xs font-medium text-white transition-all duration-300 hover:scale-105 hover:bg-[hsl(var(--echo-base)/1)] cursor-pointer"
+                        >
+                          {isMuted ? (
+                            <>
+                              <VolumeX size={16} className="text-muted-foreground" />
+                              <span className="hidden sm:inline">{isAr ? "صامت (اضغط للتشغيل)" : "Muted"}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 size={16} className="text-[hsl(var(--echo-accent))]" />
+                              <span className="hidden sm:inline">{isAr ? "الصوت مفعّل" : "Sound On"}</span>
+                            </>
+                          )}
+                        </button>
                       </div>
 
                       {/* Right: Watch Full Film / Fullscreen Modal */}
                       <button
                         type="button"
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={openModal}
                         className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-[hsl(var(--echo-accent))] px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-[hsl(var(--echo-accent)/0.3)] transition-all duration-300 hover:scale-105 hover:bg-[hsl(var(--echo-accent)/0.9)] cursor-pointer"
                       >
                         <Maximize2 size={15} />
@@ -263,7 +284,7 @@ export function SpotlightSection() {
                     <div className="absolute end-4 bottom-4 z-10">
                       <button
                         type="button"
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={openModal}
                         className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--echo-accent))] px-5 py-2.5 text-xs sm:text-sm font-semibold text-white backdrop-blur-md shadow-lg transition-transform hover:scale-105 cursor-pointer"
                       >
                         <Maximize2 size={15} />
@@ -285,12 +306,12 @@ export function SpotlightSection() {
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 p-3 sm:p-6 backdrop-blur-2xl animate-in fade-in-0 duration-300"
-          onClick={() => setIsModalOpen(false)}
+          onClick={closeModal}
         >
           {/* Close button */}
           <button
             type="button"
-            onClick={() => setIsModalOpen(false)}
+            onClick={closeModal}
             aria-label={isAr ? "إغلاق" : "Close"}
             className="absolute top-5 end-5 z-20 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-white/10 text-white transition-all hover:bg-white/20 hover:scale-105 cursor-pointer"
           >
@@ -304,16 +325,15 @@ export function SpotlightSection() {
           >
             {isVideo ? (
               <video
+                ref={modalVideoRef}
                 src={mediaUrl}
                 poster={posterUrl}
                 controls
                 autoPlay
-                muted={isStrictlySilent}
-                onVolumeChange={(e) => {
-                  if (isStrictlySilent) {
-                    const el = e.currentTarget;
-                    el.muted = true;
-                    el.volume = 0;
+                playsInline
+                onLoadedMetadata={(e) => {
+                  if (savedTime > 0) {
+                    e.currentTarget.currentTime = savedTime;
                   }
                 }}
                 className="aspect-video w-full h-auto object-contain bg-black"

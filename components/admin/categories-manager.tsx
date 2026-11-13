@@ -8,8 +8,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Loader2, FolderPlus } from "lucide-react";
+import { Plus, Trash2, Pencil, Loader2, FolderPlus, ArrowUp, ArrowDown } from "lucide-react";
 
 export type Category = { id: string; name_en: string; name_ar: string; order_index: number };
 export type Subcategory = { id: string; category_id: string; name_en: string; name_ar: string; order_index: number };
@@ -53,6 +54,62 @@ export function CategoriesManager({
     setEditingSub(s);
     setSubForm({ name_en: s.name_en, name_ar: s.name_ar });
     setSubDialog(true);
+  };
+
+  const moveCategory = async (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+
+    const current = categories[index];
+    const target = categories[targetIndex];
+
+    const currentOrder = current.order_index ?? index;
+    const targetOrder = target.order_index ?? targetIndex;
+    const newCurrentOrder = currentOrder === targetOrder ? (direction === "up" ? targetOrder - 1 : targetOrder + 1) : targetOrder;
+    const newTargetOrder = currentOrder;
+
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      await Promise.all([
+        supabase.from("portfolio_categories").update({ order_index: newCurrentOrder }).eq("id", current.id),
+        supabase.from("portfolio_categories").update({ order_index: newTargetOrder }).eq("id", target.id),
+      ]);
+      router.refresh();
+    } catch (err: unknown) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : t("Failed to reorder category", "فشل إعادة ترتيب التصنيف"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const moveSubcategory = async (catSubs: Subcategory[], index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= catSubs.length) return;
+
+    const current = catSubs[index];
+    const target = catSubs[targetIndex];
+
+    const currentOrder = current.order_index ?? index;
+    const targetOrder = target.order_index ?? targetIndex;
+    const newCurrentOrder = currentOrder === targetOrder ? (direction === "up" ? targetOrder - 1 : targetOrder + 1) : targetOrder;
+    const newTargetOrder = currentOrder;
+
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      await Promise.all([
+        supabase.from("portfolio_subcategories").update({ order_index: newCurrentOrder }).eq("id", current.id),
+        supabase.from("portfolio_subcategories").update({ order_index: newTargetOrder }).eq("id", target.id),
+      ]);
+      router.refresh();
+    } catch (err: unknown) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : t("Failed to reorder subcategory", "فشل إعادة ترتيب الفرع"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const saveCategory = async () => {
@@ -228,7 +285,7 @@ export function CategoriesManager({
         <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">{t("No categories yet.", "لا توجد تصنيفات بعد.")}</CardContent></Card>
       ) : (
         <div className="grid gap-3">
-          {categories.map((c) => {
+          {categories.map((c, catIdx) => {
             const subs = subcategories.filter((s) => s.category_id === c.id);
             const val = subInput[c.id] || { en: "", ar: "" };
             const isSubmitting = !!loadingSub[c.id];
@@ -237,8 +294,36 @@ export function CategoriesManager({
               <Card key={c.id}>
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-base">{isAr ? c.name_ar || c.name_en : c.name_en || c.name_ar}</p>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Badge variant="outline" className="font-mono text-xs px-2 py-0.5 border-primary/30 text-primary shrink-0">
+                        #{catIdx + 1}
+                      </Badge>
+                      <p className="font-semibold text-base truncate">{isAr ? c.name_ar || c.name_en : c.name_en || c.name_ar}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {/* Reorder Up / Down */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={catIdx === 0 || loading}
+                        onClick={() => moveCategory(catIdx, "up")}
+                        className="h-8 w-8 cursor-pointer disabled:opacity-30"
+                        title={t("Move up", "نقل لأعلى")}
+                      >
+                        <ArrowUp size={14} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={catIdx === categories.length - 1 || loading}
+                        onClick={() => moveCategory(catIdx, "down")}
+                        className="h-8 w-8 cursor-pointer disabled:opacity-30"
+                        title={t("Move down", "نقل لأسفل")}
+                      >
+                        <ArrowDown size={14} />
+                      </Button>
+
                       <Button variant="ghost" size="icon" onClick={() => openEdit(c)} className="h-8 w-8 cursor-pointer" title={t("Edit", "تعديل")}><Pencil size={14} /></Button>
                       <Button variant="ghost" size="icon" onClick={() => deleteCategory(c)} className="h-8 w-8 text-destructive cursor-pointer" title={t("Delete", "حذف")}><Trash2 size={14} /></Button>
                     </div>
@@ -247,9 +332,30 @@ export function CategoriesManager({
                   {/* Subcategories list */}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="text-xs text-muted-foreground font-medium">{t("Subcategories:", "الفروع:")}</span>
-                    {subs.map((s) => (
+                    {subs.map((s, subIdx) => (
                       <span key={s.id} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs">
+                        <span className="font-mono text-[10px] text-muted-foreground">#{subIdx + 1}</span>
                         <span>{isAr ? s.name_ar || s.name_en : s.name_en || s.name_ar}</span>
+                        <div className="flex items-center gap-0.5 ms-1">
+                          <button
+                            type="button"
+                            disabled={subIdx === 0 || loading}
+                            onClick={() => moveSubcategory(subs, subIdx, "up")}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+                            title={t("Move Up", "نقل للأعلى")}
+                          >
+                            <ArrowUp size={10} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={subIdx === subs.length - 1 || loading}
+                            onClick={() => moveSubcategory(subs, subIdx, "down")}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+                            title={t("Move Down", "نقل للأسفل")}
+                          >
+                            <ArrowDown size={10} />
+                          </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => openEditSub(s)}

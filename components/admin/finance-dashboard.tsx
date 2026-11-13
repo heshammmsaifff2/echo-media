@@ -205,10 +205,26 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
               </button>
             ))}
             {preset === "custom" && (
-              <div className="flex items-center gap-2">
-                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-auto" />
-                <span className="text-muted-foreground text-xs">→</span>
-                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8 w-auto" />
+              <div dir="ltr" className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  dir="ltr"
+                  lang="en-CA"
+                  value={from}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="h-8 w-auto font-mono text-xs bg-background text-start"
+                  title={t("Start date", "تاريخ البداية")}
+                />
+                <span className="text-muted-foreground text-xs font-mono">→</span>
+                <Input
+                  type="date"
+                  dir="ltr"
+                  lang="en-CA"
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="h-8 w-auto font-mono text-xs bg-background text-start"
+                  title={t("End date", "تاريخ النهاية")}
+                />
               </div>
             )}
           </div>

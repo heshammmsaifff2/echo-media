@@ -232,24 +232,26 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    slug: "studio.equipment",
+    slug: "studio.gallery",
     page: "studio",
-    label: L("Equipment", "المعدات"),
+    label: L("Studio Gallery", "معرض صور الاستوديو"),
     media: false,
-    defaultBg: { type: "image", url: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final2.png", poster: null },
+    defaultBg: { type: "none", url: null, poster: null },
     fields: [
-      { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: artHouse.equipment.heading },
-      { id: "body", label: L("Sub-heading", "العنوان الفرعي"), type: "biLong", def: artHouse.equipment.body },
-      {
-        id: "items",
-        label: L("Equipment list", "قائمة المعدات"),
-        type: "biObjList",
-        def: objList(artHouse.equipment.items, ["name", "body"]),
-        itemFields: [
-          { id: "name", label: L("Name", "الاسم") },
-          { id: "body", label: L("Description", "الوصف"), long: true },
-        ],
-      },
+      { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: { en: "Art House Spaces", ar: "مساحات استوديو آرت هاوس" } },
+      { id: "subtitle", label: L("Subtitle", "العنوان الفرعي"), type: "biLong", def: { en: "A visual tour inside our sound-treated studios, production sets, and cinema camera bays.", ar: "جولة بصرية حية داخل بلاتوهات التصوير، غرف الصوت المعالجة، وأجنحة الكاميرات السينمائية." } },
+    ],
+  },
+  {
+    slug: "studio.video",
+    page: "studio",
+    label: L("Studio Feature Video", "فيديو الاستوديو"),
+    media: true,
+    mediaTypes: ["video"] as const,
+    defaultBg: { type: "video", url: "https://res.cloudinary.com/ai39ujhm/video/upload/echo/site/final.mp4", poster: "https://res.cloudinary.com/ai39ujhm/image/upload/echo/site/posters/final.jpg" },
+    fields: [
+      { id: "heading", label: L("Video Heading", "عنوان الفيديو"), type: "bi", def: { en: "Experience the Space in Motion", ar: "عش تجربة المساحة في حركة حية" } },
+      { id: "body", label: L("Video Description", "وصف الفيديو"), type: "biLong", def: { en: "Take an immersive tour through our sets, lighting grids, and editing suites.", ar: "جولة سينمائية غامرة داخل البلاتوهات ومنظومات الإضاءة وجناح المونتاج المجهز." } },
     ],
   },
 
@@ -266,6 +268,9 @@ export const SECTIONS: SectionDef[] = [
       { id: "name", label: L("Name", "الاسم"), type: "bi", def: founder.name },
       { id: "bio", label: L("Bio", "النبذة"), type: "biLong", def: founder.bio },
       { id: "quote", label: L("Quote", "الاقتباس"), type: "biLong", def: founder.quote },
+      { id: "years_experience", label: L("Years of Experience", "سنوات الخبرة"), type: "bi", def: { en: "10+", ar: "10+" } },
+      { id: "projects_count", label: L("Completed Projects", "المشاريع المنجزة"), type: "bi", def: { en: "150+", ar: "150+" } },
+      { id: "direction_label", label: L("Creative Direction Tag", "وسم الرؤية الإبداعية"), type: "bi", def: { en: "Echo", ar: "Echo" } },
     ],
   },
   {

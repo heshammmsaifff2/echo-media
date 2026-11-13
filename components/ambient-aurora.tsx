@@ -18,11 +18,10 @@ export function AmbientAurora() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none sticky top-0 -z-10 h-screen w-full -mb-[100vh] overflow-hidden bg-[#01040F]"
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#01040F]"
       style={{
         transform: "translate3d(0, 0, 0)",
-        contain: "paint layout",
-        willChange: "transform",
+        contain: "strict",
         backfaceVisibility: "hidden",
       }}
     >

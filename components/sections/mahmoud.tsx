@@ -43,6 +43,9 @@ export function MahmoudContent() {
   const name = pick(heroS.field("name", founder.name));
   const bio = pick(heroS.field("bio", founder.bio));
   const quote = pick(heroS.field("quote", founder.quote));
+  const yearsExp = pick(heroS.field("years_experience", { en: "10+", ar: "10+" }));
+  const projectsCount = pick(heroS.field("projects_count", { en: "150+", ar: "150+" }));
+  const directionLabel = pick(heroS.field("direction_label", { en: "Echo", ar: "Echo" }));
 
   // Determine the photo URL: CMS background image, poster, or founder photo fallback
   const photoUrl =
@@ -107,22 +110,22 @@ export function MahmoudContent() {
                   </div>
                 </div>
 
-                {/* Fast Credential Badges */}
+                {/* Fast Credential Badges (Managed dynamically via Admin CMS) */}
                 <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-4">
                   <div className="rounded-xl border border-white/5 bg-surface/30 p-4">
-                    <p className="text-2xl font-bold text-bright">10+</p>
+                    <p className="text-2xl font-bold text-bright">{yearsExp}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isAr ? "سنوات خبرة سينمائية" : "Years Experience"}
                     </p>
                   </div>
                   <div className="rounded-xl border border-white/5 bg-surface/30 p-4">
-                    <p className="text-2xl font-bold text-bright">150+</p>
+                    <p className="text-2xl font-bold text-bright">{projectsCount}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isAr ? "مشروع وعمل إعلاني" : "Projects Produced"}
                     </p>
                   </div>
                   <div className="rounded-xl border border-white/5 bg-surface/30 p-4 col-span-2 sm:col-span-1">
-                    <p className="text-2xl font-bold text-bright">Echo</p>
+                    <p className="text-2xl font-bold text-bright">{directionLabel}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isAr ? "رؤية إبداعية مستقلة" : "Creative Direction"}
                     </p>
@@ -148,25 +151,25 @@ export function MahmoudContent() {
               </FadeIn>
             </div>
 
-            {/* Photo Column: Elegant Portrait Framing */}
-            <div className="order-1 lg:order-2 lg:col-span-5">
+            {/* Photo Column: Elegant Portrait Framing (Optimized refined size) */}
+            <div className="order-1 lg:order-2 lg:col-span-5 flex justify-center">
               <FadeIn direction="none" delay={0.2}>
-                <div className="relative mx-auto w-full max-w-[460px] lg:max-w-none">
+                <div className="relative mx-auto w-full max-w-[320px] sm:max-w-[360px] lg:max-w-[380px]">
                   {/* Subtle ambient halo glow behind photo */}
                   <div
                     aria-hidden="true"
-                    className="absolute -inset-3 sm:-inset-5 rounded-[2.5rem] bg-gradient-to-tr from-[hsl(var(--echo-accent)/0.35)] via-[hsl(var(--echo-accent)/0.12)] to-transparent blur-2xl -z-10"
+                    className="absolute -inset-3 sm:-inset-4 rounded-[2rem] bg-gradient-to-tr from-[hsl(var(--echo-accent)/0.3)] via-[hsl(var(--echo-accent)/0.1)] to-transparent blur-xl -z-10"
                   />
 
                   {/* Framed card */}
-                  <div className="group relative overflow-hidden rounded-[2rem] border border-white/15 bg-surface/60 p-2 sm:p-2.5 shadow-2xl backdrop-blur-md transition-all duration-500 hover:border-[hsl(var(--echo-accent)/0.5)]">
-                    <div className="relative aspect-[3/4] sm:aspect-[4/5] lg:aspect-[3/4] w-full overflow-hidden rounded-[1.6rem] bg-surface">
+                  <div className="group relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-surface/60 p-2 shadow-2xl backdrop-blur-md transition-all duration-500 hover:border-[hsl(var(--echo-accent)/0.5)]">
+                    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[1.4rem] bg-surface">
                       <Image
                         src={photoUrl}
                         alt={name}
                         fill
                         priority
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 40vw"
+                        sizes="(max-width: 768px) 320px, (max-width: 1200px) 360px, 380px"
                         className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
                       />
 

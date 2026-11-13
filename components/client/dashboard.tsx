@@ -69,12 +69,24 @@ type Order = {
   delivery_files: string[];
   delivery_unlocked_at: string | null;
   delivery_expired: boolean;
-  preview_files: string[];
+  preview_files: unknown;
   terms: string | null;
   terms_accepted_at: string | null;
   created_at: string;
   order_payments: Payment[];
 };
+
+function parsePreviews(raw: unknown): { files: string[]; unlocked: boolean } {
+  if (!raw) return { files: [], unlocked: true };
+  if (Array.isArray(raw)) return { files: raw.filter((x): x is string => typeof x === "string"), unlocked: true };
+  if (typeof raw === "object" && raw !== null && "files" in raw) {
+    const obj = raw as { files?: unknown[]; unlocked?: unknown };
+    const files = Array.isArray(obj.files) ? obj.files.filter((x): x is string => typeof x === "string") : [];
+    const unlocked = obj.unlocked === undefined ? true : Boolean(obj.unlocked);
+    return { files, unlocked };
+  }
+  return { files: [], unlocked: true };
+}
 
 type Profile = { full_name: string; email: string };
 
@@ -428,11 +440,12 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
 
   const cancelled = !!order.cancelled_at;
   const needsTerms = !!order.terms && !order.terms_accepted_at;
-  const previews = order.preview_files || [];
+  const { files: previewFiles, unlocked: previewUnlocked } = parsePreviews(order.preview_files);
   const isLocked = cancelled || !order.is_confirmed_by_admin;
-  const hasDelivery = (order.delivery_files || []).length > 0;
-  const isExpired = order.delivery_expired || (remaining !== null && remaining <= 0 && hasDelivery);
-  const isUrgent = remaining !== null && remaining > 0 && remaining < 24 * 60 * 60 * 1000;
+  const deliveryFiles = order.delivery_files || [];
+  const hasDelivery = deliveryFiles.length > 0;
+  const isExpired = !cancelled && (order.delivery_expired || (remaining !== null && remaining <= 0 && hasDelivery));
+  const isUrgent = !isExpired && remaining !== null && remaining > 0 && remaining < 24 * 60 * 60 * 1000;
 
   return (
     <Card>
@@ -561,36 +574,118 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
           )}
         </div>
 
+        {/* Milestone Preview (المعاينة الجزئية / مسودة العمل للمرحلة) */}
+        {previewFiles.length > 0 && !cancelled && (
+          <>
+            <Separator className="my-4" />
+            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 sm:p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <Eye size={17} />
+                  </span>
+                  <div>
+                    <h4 className="font-semibold text-sm text-foreground">
+                      {isAr ? "معاينة المرحلة / مسودة العمل الأولية" : "Milestone Work Preview"}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">
+                      {isAr ? "مخرجات مرحلية مصرح بمراجعتها للمشروع" : "Authorized milestone deliverables for review"}
+                    </p>
+                  </div>
+                </div>
+                {previewUnlocked ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/25 gap-1.5 px-2.5 py-1">
+                    <Unlock size={12} /> {isAr ? "مفتوحة للمعاينة" : "Preview Unlocked"}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/25 gap-1.5 px-2.5 py-1">
+                    <Clock size={12} /> {isAr ? "قيد التجهيز" : "In Preparation"}
+                  </Badge>
+                )}
+              </div>
+
+              {previewUnlocked ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {previewFiles.map((url, i) => {
+                      const meta = getDeliveryFileMeta(url, isAr);
+                      return (
+                        <div key={i} className="rounded-lg overflow-hidden border border-border/70 bg-card p-2 shadow-sm">
+                          {meta.isVideo ? (
+                            <video
+                              src={url}
+                              controls
+                              controlsList="nodownload noplaybackrate"
+                              disablePictureInPicture
+                              onContextMenu={(e) => e.preventDefault()}
+                              playsInline
+                              preload="metadata"
+                              className="w-full rounded-md bg-black aspect-video object-contain"
+                            />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={url}
+                              alt=""
+                              draggable={false}
+                              onContextMenu={(e) => e.preventDefault()}
+                              className="w-full rounded-md object-cover select-none max-h-80"
+                            />
+                          )}
+                          <div className="mt-2 px-1 flex items-center justify-between text-xs text-muted-foreground">
+                            <span className="truncate font-medium text-foreground">{meta.name}</span>
+                            <Badge variant="outline" className="text-[10px]">{meta.ext}</Badge>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isAr
+                      ? "💡 هذه معاينة استعراضية للمرحلة الحالية فقط. الملفات الأصلية فائقة الدقة تتاح في قسم التسليم أدناه."
+                      : "💡 Interactive preview for the current milestone. Full-res final files will appear in deliverables below."}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-amber-500/30 bg-card/60 p-4 text-center">
+                  <Clock size={20} className="mx-auto mb-1.5 text-amber-500/70" />
+                  <p className="text-xs font-medium text-foreground">
+                    {isAr
+                      ? "معاينة المرحلة قيد الإعداد والمراجعة من قبل فريق إيكو، وستظهر هنا بمجرد اعتمادها من الإدارة."
+                      : "Milestone preview is currently being prepared by Echo team. It will appear here once approved."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
         <Separator className="my-4" />
 
         <div>
           <h4 className="font-medium text-sm mb-3">{isAr ? "ملفات التسليم" : "Deliverables"}</h4>
-          {cancelled ? <p className="rounded-xl bg-destructive/10 p-5 text-sm">{isAr ? "هذا الطلب ملغي. سجل الدفعات محفوظ والتسليم متوقف." : "This order is cancelled. Payment history is preserved and delivery is disabled."}</p> : isExpired ? (
+          {cancelled ? (
+            <p className="rounded-xl bg-destructive/10 p-5 text-sm">
+              {isAr ? "هذا الطلب ملغي. سجل الدفعات محفوظ والتسليم متوقف." : "This order is cancelled. Payment history is preserved and delivery is disabled."}
+            </p>
+          ) : isExpired ? (
             <div className="rounded-xl border border-dashed border-red-500/30 bg-red-500/5 p-6 text-center">
               <AlertTriangle size={32} className="mx-auto mb-3 text-red-500/50" />
-              <p className="text-sm font-medium text-red-500">{isAr ? "انتهت صلاحية الملفات. تم تسليم المشروع بنجاح." : "Files have expired. Project was delivered successfully."}</p>
-              <p className="text-xs text-muted-foreground mt-1">{isAr ? "تم حذف الملفات تلقائياً بعد انتهاء فترة الـ 7 أيام." : "Files were automatically removed after the 7-day download window."}</p>
+              <p className="text-sm font-medium text-red-500">
+                {isAr ? "انتهت فترة الـ 7 أيام لتحميل ملفات التسليم السابقة." : "The 7-day download window for earlier files has expired."}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {isAr
+                  ? "إذا قام الأدمن بإضافة مخرجات أو تعديلات جديدة للمشروع، يتم تجديد فترة التحميل وتفعيلها تلقائياً."
+                  : "If new deliverables or edits are uploaded by admin, download access refreshes automatically."}
+              </p>
             </div>
           ) : isLocked ? (
             <div className="rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 p-6 text-center">
               <Lock size={32} className="mx-auto mb-3 text-amber-500/50" />
-              <p className="text-sm font-medium text-amber-500">{isAr ? "تُفتح ملفات التسليم بعد سداد المبلغ بالكامل وتأكيد الأدمن." : "Deliverables unlock once the full amount is paid and confirmed."}</p>
-              {previews.length > 0 && (
-                <div className="mt-5 text-start">
-                  <p className="mb-2 flex items-center gap-1.5 text-sm font-medium"><Eye size={15} /> {isAr ? "معاينة من الشغل" : "Work preview"}</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {previews.map((url, i) => (
-                      getDeliveryFileMeta(url, isAr).isVideo ? (
-                        <video key={i} src={url} controls controlsList="nodownload noplaybackrate" disablePictureInPicture onContextMenu={(e) => e.preventDefault()} playsInline preload="metadata" className="w-full rounded-lg bg-black" />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img key={i} src={url} alt="" draggable={false} onContextMenu={(e) => e.preventDefault()} className="w-full rounded-lg object-cover select-none" />
-                      )
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[11px] text-muted-foreground">{isAr ? "للمشاهدة فقط — النسخة النهائية تتاح بعد اكتمال الدفع." : "View only — the final files unlock after full payment."}</p>
-                </div>
-              )}
+              <p className="text-sm font-medium text-amber-500">
+                {isAr ? "تُفتح ملفات التسليم بعد سداد المبلغ بالكامل وتأكيد الأدمن." : "Deliverables unlock once the full amount is paid and confirmed."}
+              </p>
             </div>
           ) : hasDelivery ? (
             <div>

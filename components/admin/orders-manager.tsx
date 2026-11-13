@@ -43,6 +43,19 @@ function getDeliveryFileMeta(url: string, isAr: boolean) {
   }
 }
 
+export function parsePreviews(raw: unknown): { files: string[]; unlocked: boolean } {
+  if (!raw) return { files: [], unlocked: true };
+  if (Array.isArray(raw)) return { files: raw.filter((x): x is string => typeof x === "string"), unlocked: true };
+  if (typeof raw === "object" && raw !== null && "files" in raw) {
+    const obj = raw as { files: unknown; unlocked?: boolean };
+    return {
+      files: Array.isArray(obj.files) ? obj.files.filter((x): x is string => typeof x === "string") : [],
+      unlocked: obj.unlocked !== false,
+    };
+  }
+  return { files: [], unlocked: true };
+}
+
 type Order = {
   cancelled_at: string | null;
   id: string;
@@ -159,12 +172,16 @@ export function OrdersManager({
 
   const emptyOrder = { client_id: "", project_title: "", project_description: "", total_amount: "", terms: "" };
   const [newOrder, setNewOrder] = useState(emptyOrder);
+  const [termsAgreed, setTermsAgreed] = useState(false);
   const [savedTerms, setSavedTerms] = useState(defaultTerms);
   const [termsOpen, setTermsOpen] = useState(false);
   const [termsDraft, setTermsDraft] = useState(defaultTerms);
 
   useEffect(() => {
-    if (!createOpen) return;
+    if (!createOpen) {
+      setTermsAgreed(false);
+      return;
+    }
     setNewOrder((prev) => ({
       ...prev,
       client_id: prev.client_id || (selectedClientId !== "all" ? selectedClientId : ""),
@@ -186,13 +203,29 @@ export function OrdersManager({
   const [payDialog, setPayDialog] = useState<{ order: Order; payment: Payment | null } | null>(null);
   const [payAmount, setPayAmount] = useState("");
 
-  const [deliveryForm, setDeliveryForm] = useState<{ delivery_type: string; files: string[]; manualUrl: string; previews: string[] }>({ delivery_type: "direct_files", files: [], manualUrl: "", previews: [] });
+  const [deliveryForm, setDeliveryForm] = useState<{
+    delivery_type: string;
+    files: string[];
+    manualUrl: string;
+    previews: string[];
+    preview_unlocked: boolean;
+  }>({ delivery_type: "direct_files", files: [], manualUrl: "", previews: [], preview_unlocked: true });
   const [uploadingPreviews, setUploadingPreviews] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [showManualInput, setShowManualInput] = useState(false);
 
   const patchOrder = (id: string, patch: Partial<Order>) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+
+  const toggleOrderPreview = async (order: Order) => {
+    const parsed = parsePreviews(order.preview_files);
+    const nextUnlocked = !parsed.unlocked;
+    const payload = nextUnlocked ? parsed.files : { files: parsed.files, unlocked: false };
+    const supabase = createClient();
+    await supabase.from("client_orders").update({ preview_files: payload }).eq("id", order.id);
+    patchOrder(order.id, { preview_files: payload as any });
+    router.refresh();
+  };
 
   const openOrderEdit = (order: Order) => {
     setOrderError("");
@@ -268,6 +301,7 @@ export function OrdersManager({
 
   const handleCreateOrder = async () => {
     if (!newOrder.client_id || !newOrder.project_title) return;
+    if (newOrder.terms.trim() && !termsAgreed) return;
     setLoading(true);
     const supabase = createClient();
     await supabase.from("client_orders").insert({
@@ -279,6 +313,7 @@ export function OrdersManager({
     });
     setCreateOpen(false);
     setNewOrder(emptyOrder);
+    setTermsAgreed(false);
     setLoading(false);
     router.refresh();
   };
@@ -390,8 +425,37 @@ export function OrdersManager({
     const hasDrive = finalFiles.some((f) => f.includes("drive.google.com") || f.includes("docs.google.com"));
     if (deliveryForm.delivery_type === "google_drive_link" && !hasDrive && finalFiles.length > 0) determinedType = "direct_files";
     else if (deliveryForm.delivery_type === "direct_files" && hasDrive && finalFiles.length === 1) determinedType = "google_drive_link";
-    await supabase.from("client_orders").update({ delivery_type: determinedType, delivery_files: finalFiles, preview_files: deliveryForm.previews }).eq("id", deliveryDialog.id);
-    patchOrder(deliveryDialog.id, { delivery_type: determinedType, delivery_files: finalFiles, preview_files: deliveryForm.previews });
+
+    const previewPayload = deliveryForm.preview_unlocked
+      ? deliveryForm.previews
+      : { files: deliveryForm.previews, unlocked: false };
+
+    const isNewUpload = finalFiles.length > 0;
+    const nowIso = new Date().toISOString();
+
+    const patchPayload: Record<string, unknown> = {
+      delivery_type: determinedType,
+      delivery_files: finalFiles,
+      preview_files: previewPayload,
+    };
+
+    // Edge case fix (Item 15): If newly uploaded materials/files exist post-deadline,
+    // reset delivery_expired to false and refresh delivery_unlocked_at so client is never locked out of new assets!
+    if (isNewUpload) {
+      patchPayload.delivery_expired = false;
+      patchPayload.delivery_unlocked_at = nowIso;
+      patchPayload.is_confirmed_by_admin = true;
+    }
+
+    await supabase.from("client_orders").update(patchPayload).eq("id", deliveryDialog.id);
+    patchOrder(deliveryDialog.id, {
+      ...patchPayload,
+      delivery_type: determinedType,
+      delivery_files: finalFiles,
+      preview_files: previewPayload as any,
+      delivery_expired: isNewUpload ? false : deliveryDialog.delivery_expired,
+      delivery_unlocked_at: isNewUpload ? nowIso : deliveryDialog.delivery_unlocked_at,
+    });
     setDeliveryDialog(null);
     setLoading(false);
     router.refresh();
@@ -449,7 +513,35 @@ export function OrdersManager({
                 <Textarea value={newOrder.terms} onChange={(e) => setNewOrder({ ...newOrder, terms: e.target.value })} rows={5} placeholder={isAr ? "اتركها فارغة لو الطلب بدون عقد" : "Leave empty for no contract"} />
                 <p className="text-xs text-muted-foreground">{isAr ? "العميل لازم يوافق على البنود قبل ما يقدر يرفع إيصال دفع." : "The client must accept these before uploading a payment receipt."}</p>
               </div>
-              <Button onClick={handleCreateOrder} disabled={loading || !newOrder.client_id || !newOrder.project_title} className="cursor-pointer">
+
+              {/* Interactive legal agreement step (Item 13) */}
+              {newOrder.terms.trim() && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-3.5 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                    <ScrollText size={14} />
+                    <span>{isAr ? "إقرار الاتفاقية وشروط المراحل" : "Terms & Milestones Agreement"}</span>
+                  </div>
+                  <label className="flex items-start gap-2.5 text-xs text-foreground cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={termsAgreed}
+                      onChange={(e) => setTermsAgreed(e.target.checked)}
+                      className="mt-0.5 rounded text-primary cursor-pointer h-4 w-4"
+                    />
+                    <span className="leading-relaxed">
+                      {isAr
+                        ? "أقر وأوافق على نطاق المشروع وبنود العقد وشروط المراحل والتسليم قبل تفعيل الطلب."
+                        : "I agree to the project scope clauses, milestone conditions, and binding rules before project activation."}
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              <Button
+                onClick={handleCreateOrder}
+                disabled={loading || !newOrder.client_id || !newOrder.project_title || (Boolean(newOrder.terms.trim()) && !termsAgreed)}
+                className="cursor-pointer"
+              >
                 {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
                 {isAr ? "إنشاء الطلب" : "Create Order"}
               </Button>
@@ -719,9 +811,29 @@ export function OrdersManager({
                   )}
 
                   <div className="mb-4 text-xs flex flex-wrap items-center gap-2">
-                    {(order.preview_files || []).length > 0 && (
-                      <Badge variant="outline" className="gap-1.5 py-1"><Eye size={12} /> {isAr ? `${order.preview_files.length} معاينة ظاهرة للعميل` : `${order.preview_files.length} preview(s) visible`}</Badge>
-                    )}
+                    {(() => {
+                      const parsed = parsePreviews(order.preview_files);
+                      if (parsed.files.length === 0) return null;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => toggleOrderPreview(order)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border font-medium transition-all cursor-pointer ${
+                            parsed.unlocked
+                              ? "border-green-500/40 bg-green-500/10 text-green-500 hover:bg-green-500/20"
+                              : "border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+                          }`}
+                          title={isAr ? "اضغط لتبديل إتاحة المعاينة للعميل قبل السداد" : "Click to toggle milestone preview visibility for client"}
+                        >
+                          <Eye size={12} />
+                          <span>
+                            {parsed.unlocked
+                              ? (isAr ? `${parsed.files.length} معاينة متاحة للعميل (مفتوحة)` : `${parsed.files.length} preview(s) visible`)
+                              : (isAr ? `${parsed.files.length} معاينة (مقفلة من الأدمن)` : `${parsed.files.length} preview(s) locked`)}
+                          </span>
+                        </button>
+                      );
+                    })()}
                     {order.delivery_files && order.delivery_files.length > 0 ? (
                       <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 gap-1.5 py-1"><FileText size={12} /> {isAr ? `تم إرفاق ${order.delivery_files.length} ملف(ات)` : `${order.delivery_files.length} file(s) attached`}</Badge>
                     ) : (
@@ -734,7 +846,14 @@ export function OrdersManager({
 
                   <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" disabled={!!order.cancelled_at || loading}
                     onClick={() => {
-                      setDeliveryForm({ delivery_type: order.delivery_type === "google_drive_link" ? "google_drive_link" : "direct_files", files: order.delivery_files || [], manualUrl: "", previews: order.preview_files || [] });
+                      const parsed = parsePreviews(order.preview_files);
+                      setDeliveryForm({
+                        delivery_type: order.delivery_type === "google_drive_link" ? "google_drive_link" : "direct_files",
+                        files: order.delivery_files || [],
+                        manualUrl: "",
+                        previews: parsed.files,
+                        preview_unlocked: parsed.unlocked,
+                      });
                       setShowManualInput(false);
                       setDeliveryDialog(order);
                     }}>
@@ -832,6 +951,23 @@ export function OrdersManager({
                 <Badge variant="secondary" className="text-xs">{deliveryForm.previews.length}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">{isAr ? "صور أو فيديوهات (يفضل بعلامة مائية أو جودة أقل) يشوفها العميل للمشاهدة فقط قبل اكتمال الدفع." : "Images or videos (ideally watermarked or low-res) the client can view — not download — before paying in full."}</p>
+
+              {/* Milestone preview unlock toggle (Item 2) */}
+              <label className="flex items-center justify-between p-2.5 rounded-lg border border-primary/20 bg-background/80 cursor-pointer hover:bg-muted/40 transition-colors">
+                <div className="flex items-center gap-2">
+                  <Eye size={15} className="text-primary" />
+                  <span className="text-xs font-medium text-foreground">
+                    {isAr ? "إتاحة المعاينة للعميل الآن في حسابه" : "Unlock preview to client now"}
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={deliveryForm.preview_unlocked}
+                  onChange={(e) => setDeliveryForm({ ...deliveryForm, preview_unlocked: e.target.checked })}
+                  className="h-4 w-4 rounded text-primary cursor-pointer"
+                />
+              </label>
+
               {deliveryForm.previews.map((url, idx) => (
                 <div key={url + idx} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-card p-2">
                   <p className="min-w-0 flex-1 truncate text-sm" title={url}>{getDeliveryFileMeta(url, isAr).name}</p>

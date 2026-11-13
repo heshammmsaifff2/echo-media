@@ -36,8 +36,8 @@ export function PortfolioGrid({
   initialCategory?: string | null;
 }) {
   const { isAr } = useI18n();
-  // Initially null so the user is prompted to select a category first, unless initialCategory is provided
-  const [catFilter, setCatFilter] = useState<string | null>(initialCategory ?? null);
+  // Default to "all" (or initialCategory) so portfolio projects are immediately visible on initial load without a blank prompt
+  const [catFilter, setCatFilter] = useState<string | null>(initialCategory ?? "all");
   const [subFilter, setSubFilter] = useState<string>("all");
   const [lightbox, setLightbox] = useState<PortfolioItem | null>(null);
 
