@@ -71,6 +71,11 @@ export async function GET() {
       }
     }
 
+    // Fallback media hard-coded in components, used when no upload is saved.
+    for (const id of ["echo/site/final", "echo/site/vid1-16-9", "echo/site/vid2-a6-9", "echo/site/posters/final", "echo/site/posters/vid1"]) {
+      referencedIds.add(id);
+    }
+
     const orphaned: { public_id: string; url: string; type: string }[] = [];
 
     for (const resourceType of RESOURCE_TYPES) {

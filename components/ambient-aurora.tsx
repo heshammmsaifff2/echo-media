@@ -1,6 +1,24 @@
 "use client";
 
 import { useReducedMotion } from "framer-motion";
+import { useActiveScene } from "@/components/home-scenes";
+
+/**
+ * One staging per home section: where the light sits and what tint it carries.
+ * Switching scenes glides between these, so moving to the next section reads
+ * as a change of set rather than one static backdrop.
+ */
+const SCENES = [
+  { x: 0, y: 0, rotate: 0, scale: 1, tint: "rgba(34,114,247,0.00)" },
+  { x: 18, y: -22, rotate: 8, scale: 1.12, tint: "rgba(34,114,247,0.18)" },
+  { x: -16, y: -10, rotate: -10, scale: 1.05, tint: "rgba(120,90,255,0.16)" },
+  { x: 10, y: 14, rotate: 14, scale: 1.18, tint: "rgba(20,160,255,0.14)" },
+  { x: -20, y: -26, rotate: -6, scale: 1.1, tint: "rgba(74,124,245,0.20)" },
+  { x: 22, y: 8, rotate: -14, scale: 1.08, tint: "rgba(100,70,240,0.18)" },
+  { x: -8, y: -18, rotate: 10, scale: 1.15, tint: "rgba(30,140,255,0.15)" },
+  { x: 14, y: -6, rotate: -8, scale: 1.04, tint: "rgba(90,110,255,0.17)" },
+  { x: 0, y: -30, rotate: 0, scale: 1.2, tint: "rgba(34,114,247,0.24)" },
+];
 
 /**
  * AmbientAurora — dark-dominant cinematic aura
@@ -14,6 +32,9 @@ import { useReducedMotion } from "framer-motion";
 export function AmbientAurora() {
   const reduced = useReducedMotion();
   const anim = (cls: string) => (reduced ? "" : cls);
+  const active = useActiveScene();
+  const scene = SCENES[active % SCENES.length];
+  const glide = reduced ? "none" : "transform 1.6s cubic-bezier(0.22, 1, 0.36, 1)";
 
   return (
     <div
@@ -34,6 +55,14 @@ export function AmbientAurora() {
         }}
       />
 
+      {/* Stage: the light rig moves as a whole between section scenes. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `translate3d(${scene.x}vw, ${scene.y}vh, 0) rotate(${scene.rotate}deg) scale(${scene.scale})`,
+          transition: glide,
+        }}
+      >
       {/* 2. Deep cobalt body — mid-left, gives the rich blue middle */}
       <div
         className={`absolute top-[28%] -left-[10%] h-[800px] w-[800px] rounded-full opacity-70 ${anim(
@@ -98,6 +127,24 @@ export function AmbientAurora() {
           backfaceVisibility: "hidden",
         }}
       />
+
+      </div>
+
+      {/* Scene tints cross-fade so each section carries its own colour temperature. */}
+      {SCENES.map((sc, i) => (
+        <div
+          key={i}
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(ellipse 80% 60% at ${50 + sc.x}% ${55 - sc.y}%, ${sc.tint}, transparent 70%)`,
+            opacity: i === active % SCENES.length ? 1 : 0,
+            transition: reduced ? "none" : "opacity 1.2s ease",
+          }}
+        />
+      ))}
+
+      {/* Light sweep that plays once on every scene change. */}
+      {!reduced && active > 0 && <div key={active} className="scene-sweep absolute inset-0" />}
 
       {/* 7. Top vignette — locks the upper third to near-black so dark stays dominant */}
       <div

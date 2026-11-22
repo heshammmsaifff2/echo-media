@@ -430,7 +430,10 @@ export function OrdersManager({
       ? deliveryForm.previews
       : { files: deliveryForm.previews, unlocked: false };
 
-    const isNewUpload = finalFiles.length > 0;
+    // Only a file that wasn't there before restarts the window, and only on a
+    // fully paid order — re-saving must not unlock unpaid work or extend access.
+    const previousFiles = deliveryDialog.delivery_files || [];
+    const isNewUpload = deliveryDialog.is_confirmed_by_admin && finalFiles.some((f) => !previousFiles.includes(f));
     const nowIso = new Date().toISOString();
 
     const patchPayload: Record<string, unknown> = {
@@ -444,7 +447,6 @@ export function OrdersManager({
     if (isNewUpload) {
       patchPayload.delivery_expired = false;
       patchPayload.delivery_unlocked_at = nowIso;
-      patchPayload.is_confirmed_by_admin = true;
     }
 
     await supabase.from("client_orders").update(patchPayload).eq("id", deliveryDialog.id);

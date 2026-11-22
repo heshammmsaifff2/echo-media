@@ -99,6 +99,7 @@ export function ShowreelSection() {
   const steps = pick(field("steps", style.steps));
   const bandVideo = bg.type === "video" && bg.url ? bg.url : undefined;
   const bandImage = bg.type === "image" && bg.url ? bg.url : undefined;
+  const withSound = field<boolean>("muted", true) === false;
 
   return (
     <section className="relative bg-transparent py-28 sm:py-36">
@@ -122,7 +123,8 @@ export function ShowreelSection() {
                 <LazyVideo
                   src={bandVideo}
                   poster={bg.poster ?? undefined}
-                  mode="ambient"
+                  // "With sound" in the admin turns it into a player the visitor starts, with audio.
+                  mode={withSound ? "feature" : "ambient"}
                   fit="contain"
                   label="Echo showreel"
                   className="aspect-video w-full"

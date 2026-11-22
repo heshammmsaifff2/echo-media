@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "*.supabase.co" },
+      // Placeholder studio gallery photos until real ones are uploaded.
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
   async rewrites() {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useWideViewport } from "@/components/use-viewport";
 
@@ -121,6 +121,15 @@ export function LazyVideo({
     setMuted(video.muted);
   };
 
+  const fullscreen = () => {
+    const video = videoRef.current as (HTMLVideoElement & { webkitEnterFullscreen?: () => void }) | null;
+    if (!video) return;
+    if (video.paused) video.play().catch(() => {});
+    // iPhone Safari only supports fullscreen on the <video> itself.
+    if (video.requestFullscreen) video.requestFullscreen().catch(() => {});
+    else video.webkitEnterFullscreen?.();
+  };
+
   const isAmbient = mode === "ambient";
 
   return (
@@ -151,6 +160,8 @@ export function LazyVideo({
         playsInline
         preload={armed ? "metadata" : "none"}
         autoPlay={isAmbient && armed}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
         aria-label={label}
         className={cn(
           "relative h-full w-full",
@@ -200,6 +211,15 @@ export function LazyVideo({
             className="absolute bottom-5 end-5 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-[hsl(var(--echo-base)/0.6)] text-white backdrop-blur-md transition-colors hover:bg-[hsl(var(--echo-base)/0.85)] cursor-pointer"
           >
             {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={fullscreen}
+            aria-label={isAr ? "ملء الشاشة" : "Fullscreen"}
+            className="absolute bottom-5 end-[4.5rem] grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-[hsl(var(--echo-base)/0.6)] text-white backdrop-blur-md transition-colors hover:bg-[hsl(var(--echo-base)/0.85)] cursor-pointer"
+          >
+            <Maximize2 size={17} />
           </button>
         </>
       )}

@@ -65,6 +65,24 @@ export function SpotlightSection() {
     }
   }, [isStrictlySilent]);
 
+  // "With sound": browsers only allow autoplay muted, so unmute on the visitor's
+  // first interaction with the page (a click/tap/key is a valid user gesture).
+  useEffect(() => {
+    if (isStrictlySilent) return;
+    const unmute = (e: Event) => {
+      const video = videoRef.current;
+      // A press on the player's own buttons is handled by them (else the sound toggle would undo this).
+      if (!video || (e.target instanceof Element && e.target.closest("button"))) return;
+      video.muted = false;
+      setIsMuted(false);
+      cleanup();
+    };
+    const events = ["pointerdown", "keydown", "touchstart"] as const;
+    const cleanup = () => events.forEach((e) => window.removeEventListener(e, unmute));
+    events.forEach((e) => window.addEventListener(e, unmute, { passive: true }));
+    return cleanup;
+  }, [isStrictlySilent]);
+
   // Open modal without audio duplication
   const openModal = () => {
     if (videoRef.current) {

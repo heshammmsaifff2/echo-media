@@ -4,6 +4,7 @@ import { pageMetadata, organizationJsonLd } from "@/lib/seo";
 import { isLocale, type Locale } from "@/lib/locale";
 import { HeroSection } from "@/components/sections/hero";
 import { AmbientAurora } from "@/components/ambient-aurora";
+import { SceneProvider, Scene } from "@/components/home-scenes";
 import { SpotlightSection } from "@/components/sections/spotlight";
 import { ShowreelSection, LightingSection } from "@/components/sections/showreel";
 import { FeaturedWork } from "@/components/sections/featured-work";
@@ -45,45 +46,47 @@ export default async function Home({ params }: Params) {
         }}
       />
 
+      <SceneProvider>
       <AmbientAurora />
 
       <main className="relative isolate flex flex-col w-full">
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={0}>
           <HeroSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={1}>
           <ShowreelSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={2}>
           <LightingSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={3}>
           <FeaturedWork items={featured || []} categories={catsRes.data || []} />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={4}>
           <SpotlightSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={5}>
           <DnaServicesSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={6}>
           <ClientsSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={7}>
           <DnaSection />
-        </div>
+        </Scene>
 
-        <div className="relative w-full transition-transform duration-500 ease-out">
+        <Scene index={8}>
           <CtaSection />
-        </div>
+        </Scene>
       </main>
+      </SceneProvider>
     </>
   );
 }

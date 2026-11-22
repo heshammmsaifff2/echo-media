@@ -153,7 +153,8 @@ export function MahmoudContent() {
 
             {/* Photo Column: Elegant Portrait Framing (Optimized refined size) */}
             <div className="order-1 lg:order-2 lg:col-span-5 flex justify-center">
-              <FadeIn direction="none" delay={0.2}>
+              {/* w-full: inside a centered flex column the wrapper would otherwise shrink to 0 and hide the photo. */}
+              <FadeIn direction="none" delay={0.2} className="w-full">
                 <div className="relative mx-auto w-full max-w-[320px] sm:max-w-[360px] lg:max-w-[380px]">
                   {/* Subtle ambient halo glow behind photo */}
                   <div

@@ -210,9 +210,10 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
                   type="date"
                   dir="ltr"
                   lang="en-CA"
-                  value={from}
-                  onChange={(e) => setFrom(e.target.value)}
-                  className="h-8 w-auto font-mono text-xs bg-background text-start"
+                  // Uncontrolled: re-rendering a half-typed date wipes the day segment.
+                  defaultValue={from}
+                  onChange={(e) => { if (e.target.value || !e.target.validity.badInput) setFrom(e.target.value); }}
+                  className="h-8 w-40 font-mono text-xs bg-background text-start"
                   title={t("Start date", "تاريخ البداية")}
                 />
                 <span className="text-muted-foreground text-xs font-mono">→</span>
@@ -220,9 +221,10 @@ export function FinanceDashboard({ orders }: { orders: FinanceOrder[] }) {
                   type="date"
                   dir="ltr"
                   lang="en-CA"
-                  value={to}
-                  onChange={(e) => setTo(e.target.value)}
-                  className="h-8 w-auto font-mono text-xs bg-background text-start"
+                  // Uncontrolled: re-rendering a half-typed date wipes the day segment.
+                  defaultValue={to}
+                  onChange={(e) => { if (e.target.value || !e.target.validity.badInput) setTo(e.target.value); }}
+                  className="h-8 w-40 font-mono text-xs bg-background text-start"
                   title={t("End date", "تاريخ النهاية")}
                 />
               </div>
