@@ -65,6 +65,7 @@ type Order = {
   project_description: string | null;
   total_amount: number;
   is_confirmed_by_admin: boolean;
+  delivery_days: number;
   delivery_type: string | null;
   delivery_files: string[];
   delivery_unlocked_at: string | null;
@@ -115,16 +116,16 @@ export function ClientDashboard({ orders, profile }: { orders: Order[]; profile:
   );
 }
 
-function useCountdown(targetDate: string | null) {
+function useCountdown(targetDate: string | null, days = 7) {
   const [remaining, setRemaining] = useState<number | null>(null);
   useEffect(() => {
     if (!targetDate) return;
-    const expiresAt = new Date(targetDate).getTime() + 7 * 24 * 60 * 60 * 1000;
+    const expiresAt = new Date(targetDate).getTime() + (days || 7) * 24 * 60 * 60 * 1000;
     const update = () => { const diff = expiresAt - Date.now(); setRemaining(diff > 0 ? diff : 0); };
     update();
     const interval = setInterval(update, 60_000);
     return () => clearInterval(interval);
-  }, [targetDate]);
+  }, [targetDate, days]);
   return remaining;
 }
 
@@ -201,7 +202,7 @@ type DownloadState = {
 function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
   const router = useRouter();
   const deviceType = useDeviceType();
-  const remaining = useCountdown(order.delivery_unlocked_at);
+  const remaining = useCountdown(order.delivery_unlocked_at, order.delivery_days);
   const [uploading, setUploading] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [amount, setAmount] = useState("");
@@ -672,7 +673,7 @@ function OrderCard({ order, isAr }: { order: Order; isAr: boolean }) {
             <div className="rounded-xl border border-dashed border-red-500/30 bg-red-500/5 p-6 text-center">
               <AlertTriangle size={32} className="mx-auto mb-3 text-red-500/50" />
               <p className="text-sm font-medium text-red-500">
-                {isAr ? "انتهت فترة الـ 7 أيام لتحميل ملفات التسليم السابقة." : "The 7-day download window for earlier files has expired."}
+                {isAr ? "انتهت فترة التحميل لملفات التسليم السابقة." : "The download window for earlier files has expired."}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {isAr

@@ -173,7 +173,7 @@ export function SpotlightSection() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-transparent py-28 sm:py-36">
+    <section className="relative overflow-hidden bg-transparent py-20 sm:py-24">
       {/* Background ambient lighting — pure hardware-accelerated radial gradient without costly blur filters */}
       <div
         aria-hidden="true"

@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { pageMetadata, organizationJsonLd } from "@/lib/seo";
 import { isLocale, type Locale } from "@/lib/locale";
 import { HeroSection } from "@/components/sections/hero";
-import { AmbientAurora } from "@/components/ambient-aurora";
-import { SceneProvider, Scene } from "@/components/home-scenes";
+import { Scene } from "@/components/home-scenes";
 import { SpotlightSection } from "@/components/sections/spotlight";
 import { ShowreelSection, LightingSection } from "@/components/sections/showreel";
 import { FeaturedWork } from "@/components/sections/featured-work";
@@ -46,8 +45,6 @@ export default async function Home({ params }: Params) {
         }}
       />
 
-      <SceneProvider>
-      <AmbientAurora />
 
       <main className="relative isolate flex flex-col w-full">
         <Scene index={0}>
@@ -86,7 +83,6 @@ export default async function Home({ params }: Params) {
           <CtaSection />
         </Scene>
       </main>
-      </SceneProvider>
     </>
   );
 }

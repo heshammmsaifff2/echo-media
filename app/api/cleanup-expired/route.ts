@@ -5,18 +5,25 @@ import { NextResponse } from "next/server";
 export async function POST() {
   const supabase = await createClient();
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const DAY = 24 * 60 * 60 * 1000;
+  // Every window is at least 7 days, so only rows opened before that can be due;
+  // each one's own delivery_days (admin extensions) decides the rest.
+  const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString();
 
-  const { data: expired } = await supabase
+  const { data: candidates } = await supabase
     .from("client_orders")
-    .select("id, delivery_files, delivery_type")
+    .select("id, delivery_files, delivery_type, delivery_unlocked_at, delivery_days")
     .eq("is_confirmed_by_admin", true)
     .is("cancelled_at", null)
     .eq("delivery_expired", false)
     .not("delivery_unlocked_at", "is", null)
     .lt("delivery_unlocked_at", sevenDaysAgo);
 
-  if (!expired?.length) {
+  const expired = (candidates || []).filter(
+    (o) => new Date(o.delivery_unlocked_at).getTime() + (o.delivery_days || 7) * DAY < Date.now()
+  );
+
+  if (!expired.length) {
     return NextResponse.json({ cleaned: 0 });
   }
 

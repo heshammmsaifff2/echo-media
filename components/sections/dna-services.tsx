@@ -235,7 +235,7 @@ export function DnaServicesSection() {
     STRANDS.find((s) => s.id === activeStrandId) || STRANDS[0];
 
   return (
-    <section className="relative overflow-hidden bg-transparent py-28 sm:py-36">
+    <section className="relative overflow-hidden bg-transparent py-20 sm:py-24">
       {/* Subtle organic ambient glow */}
       <div
         aria-hidden="true"
@@ -309,7 +309,7 @@ export function DnaServicesSection() {
         </div>
 
         {/* ── Interactive DNA Biological Strand Display ─────────────────── */}
-        <div className="relative rounded-3xl border border-white/15 bg-gradient-to-b from-[#040816]/90 via-[#020614]/85 to-[#01030a]/95 p-6 sm:p-10 lg:p-12 shadow-2xl backdrop-blur-xl">
+        <div className="relative rounded-3xl border border-white/15 bg-gradient-to-b from-[#040816]/90 via-[#020614]/85 to-[#01030a]/95 p-6 sm:p-10 lg:p-12 shadow-2xl">
           
           {/* Internal Strand Header */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 border-b border-white/10 pb-8 mb-10">

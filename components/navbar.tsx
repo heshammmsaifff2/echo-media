@@ -104,7 +104,7 @@ export function Navbar() {
         hidden ? "-translate-y-full" : "translate-y-0"
       } ${
         scrolled
-          ? "border-b border-border bg-background/80 backdrop-blur-xl"
+          ? "border-b border-border bg-background/90 backdrop-blur-md"
           : "border-b border-transparent bg-transparent"
       }`}
     >

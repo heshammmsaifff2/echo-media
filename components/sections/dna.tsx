@@ -27,7 +27,7 @@ export function DnaSection() {
   const brandNote = pick(field("brandNote", dna.brandNote));
 
   return (
-    <section className="relative overflow-hidden bg-transparent py-24 sm:py-36">
+    <section className="relative overflow-hidden bg-transparent py-16 sm:py-24">
       <div className="relative mx-auto max-w-[1400px] px-4 sm:px-8 lg:px-12">
         <FadeIn direction="up">
           {/* ── Editorial Poster Card Enclosure ────────────────────────────── */}

@@ -36,11 +36,11 @@ export function ContactContent() {
     "w-full rounded-xl border border-border bg-surface px-4 py-3 text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-[hsl(var(--echo-accent))] focus:ring-1 focus:ring-[hsl(var(--echo-accent))]/40";
 
   return (
-    <section className="relative min-h-[100svh] overflow-hidden bg-background grain">
+    <section className="relative min-h-[100svh] overflow-hidden bg-transparent grain">
       {/* Accent bloom — colour only, no image. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute end-0 top-0 h-[440px] w-[720px] max-w-[100vw] -translate-y-1/4 translate-x-1/4 rounded-full bg-[hsl(var(--echo-accent))] opacity-[0.12] blur-[150px]"
+        className="pointer-events-none absolute end-0 top-0 h-[440px] w-[720px] max-w-[100vw] -translate-y-1/4 translate-x-1/4 rounded-full opacity-[0.12]" style={{ background: "radial-gradient(closest-side, hsl(var(--echo-accent)), transparent)" }}
       />
 
       <div className="relative mx-auto flex min-h-[100svh] max-w-[1400px] flex-col justify-center px-6 pt-32 pb-20 sm:px-10">

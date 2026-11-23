@@ -30,7 +30,6 @@ export function HeroSection() {
 
       {/* Keep the moving field behind a dark reading area. */}
       <div className="hero-reading-shade pointer-events-none absolute inset-0 z-[1]" aria-hidden="true" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-40 bg-gradient-to-t from-background to-transparent" />
 
       <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1400px] flex-col justify-center px-6 pt-32 pb-28 sm:px-10 sm:pt-36 sm:pb-32">
         <motion.p

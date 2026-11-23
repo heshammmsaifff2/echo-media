@@ -198,7 +198,7 @@ export function MahmoudContent() {
       </section>
 
       {/* Where he works — clean numbered stack on the dark base. */}
-      <section className="border-t border-border bg-background py-28 sm:py-36">
+      <section className=" bg-transparent py-20 sm:py-24">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
           <div className="mb-14 flex items-center gap-6">
             <span className="eyebrow whitespace-nowrap">

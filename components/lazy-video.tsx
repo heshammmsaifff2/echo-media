@@ -34,7 +34,6 @@ export function LazyVideo({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const backdropRef = useRef<HTMLVideoElement>(null);
   const [armed, setArmed] = useState(false);
   const [playing, setPlaying] = useState(false);
   // Ambient loops are always muted. Feature videos start unmuted so the visitor
@@ -85,22 +84,6 @@ export function LazyVideo({
     return () => io.disconnect();
   }, [mode, armed]);
 
-  // The blurred fill is a live, muted copy of the same video; pause it off screen.
-  useEffect(() => {
-    if (!isContain || !armed) return;
-    const el = hostRef.current;
-    const bd = backdropRef.current;
-    if (!el || !bd) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) bd.play().catch(() => {});
-        else bd.pause();
-      },
-      { threshold: 0.15 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [fit, armed]);
 
   const toggle = () => {
     const video = videoRef.current;
@@ -131,22 +114,19 @@ export function LazyVideo({
   };
 
   const isAmbient = mode === "ambient";
+  // Cloudinary serves a frame of any video when the extension is swapped to .jpg.
+  const fillImage = poster || (src.includes("res.cloudinary.com") ? src.replace(/\.(mp4|mov|webm|m4v)$/i, ".jpg") : undefined);
 
   return (
     <div ref={hostRef} className={cn("relative overflow-hidden bg-surface", className)}>
       {/* Blurred fill so a portrait/landscape frame shown in full never leaves
           empty bars — a live, muted, blown-up copy of the same video playing
           behind it (falls back to the poster until it loads). */}
-      {isContain && (
-        <video
-          ref={backdropRef}
-          src={armed ? src : undefined}
-          poster={poster}
-          muted
-          loop
-          playsInline
-          preload={armed ? "metadata" : "none"}
-          autoPlay={armed}
+      {isContain && fillImage && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={fillImage}
+          alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl"
         />

@@ -14,6 +14,8 @@ import { ContentProvider } from "@/components/content-provider";
 import { getSectionMap } from "@/lib/content-server";
 import { getSiteContact, getStudioContact } from "@/lib/settings-server";
 import { AuthRecoveryHandler } from "@/components/auth-recovery-handler";
+import { AmbientAurora } from "@/components/ambient-aurora";
+import { SceneProvider } from "@/components/home-scenes";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -80,7 +82,7 @@ export default async function SiteLayout({
       suppressHydrationWarning
     >
       <body
-        className="antialiased min-h-screen flex flex-col bg-background"
+        className="relative antialiased min-h-screen flex flex-col bg-background"
         suppressHydrationWarning
       >
         <SplashScreen />
@@ -88,9 +90,12 @@ export default async function SiteLayout({
         <I18nProvider locale={typed}>
           <ContentProvider value={sections}>
             <SmoothScroll />
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer contact={contact} studioContact={studioContact} />
+            <SceneProvider>
+              <AmbientAurora />
+              <Navbar />
+              <main className="flex-1">{children}</main>
+              <Footer contact={contact} studioContact={studioContact} />
+            </SceneProvider>
           </ContentProvider>
         </I18nProvider>
       </body>

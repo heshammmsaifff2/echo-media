@@ -246,7 +246,7 @@ export function ArtHouseContent() {
       </MediaPanel>
 
       {/* What the studio offers */}
-      <section className="border-t border-border bg-background py-28 sm:py-36">
+      <section className=" bg-transparent py-20 sm:py-24">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
           <div className="mb-14 flex items-center gap-6">
             <span className="eyebrow whitespace-nowrap">
@@ -274,7 +274,7 @@ export function ArtHouseContent() {
       </section>
 
       {/* ── Studio Controllable Video (Managed via Admin) ───────────────── */}
-      <section className="relative overflow-hidden border-t border-white/10 bg-[#020510] py-28 sm:py-36">
+      <section className="relative overflow-hidden bg-transparent py-20 sm:py-24">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-1/2 h-[500px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full -z-10"
@@ -403,7 +403,7 @@ export function ArtHouseContent() {
       </section>
 
       {/* ── Studio Image Carousel Gallery (Replacing equipment section) ── */}
-      <section className="relative overflow-hidden border-t border-white/10 bg-[#01040f] py-28 sm:py-36">
+      <section className="relative overflow-hidden bg-transparent py-20 sm:py-24">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
           
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12 sm:mb-16">

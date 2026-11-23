@@ -15,10 +15,10 @@ export function CtaSection() {
   const tag = field("tag", { en: "Let's talk", ar: "لنبدأ" });
 
   return (
-    <section className="relative overflow-hidden border-t border-white/10 bg-transparent py-32 sm:py-44">
+    <section className="relative overflow-hidden bg-transparent py-20 sm:py-28">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 h-[320px] w-[760px] max-w-[110vw] -translate-x-1/2 rounded-full bg-[hsl(var(--echo-accent))] opacity-[0.12] blur-[150px]"
+        className="pointer-events-none absolute left-1/2 top-0 h-[320px] w-[760px] max-w-[110vw] -translate-x-1/2 rounded-full opacity-[0.12]" style={{ background: "radial-gradient(closest-side, hsl(var(--echo-accent)), transparent)" }}
       />
 
       <div className="relative mx-auto max-w-[1400px] px-6 sm:px-10">

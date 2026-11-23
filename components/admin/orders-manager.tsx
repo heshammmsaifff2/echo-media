@@ -64,6 +64,7 @@ type Order = {
   project_description: string | null;
   total_amount: number;
   is_confirmed_by_admin: boolean;
+  delivery_days: number;
   delivery_type: string | null;
   delivery_files: string[];
   delivery_unlocked_at: string | null;
@@ -78,8 +79,8 @@ type Order = {
 
 type Client = { id: string; full_name: string; email: string };
 
-function deliveryRemaining(unlockedAt: string, isAr: boolean) {
-  const ms = new Date(unlockedAt).getTime() + 7 * 24 * 60 * 60 * 1000 - Date.now();
+function deliveryRemaining(unlockedAt: string, windowDays: number, isAr: boolean) {
+  const ms = new Date(unlockedAt).getTime() + (windowDays || 7) * 24 * 60 * 60 * 1000 - Date.now();
   if (ms <= 0) return isAr ? "انتهت المهلة" : "Window closed";
   const days = Math.floor(ms / (24 * 60 * 60 * 1000));
   const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
@@ -254,10 +255,11 @@ export function OrdersManager({
         client_id: editForm.client_id, project_title: editForm.project_title.trim(),
         project_description: editForm.project_description.trim() || null, total_amount: total,
         payment_status: fullyPaid ? "fully_paid" : editOrder.order_payments.some((p) => !p.is_confirmed) ? "receipt_uploaded" : "deposit_paid",
-        is_confirmed_by_admin: fullyPaid,
+        // A delivery the admin opened by hand stays open when the order is edited.
+        is_confirmed_by_admin: fullyPaid || editOrder.is_confirmed_by_admin,
         // Accepted terms are a signed record and stay frozen.
         ...(editOrder.terms_accepted_at ? {} : { terms: editForm.terms.trim() || null }),
-        delivery_unlocked_at: fullyPaid ? editOrder.delivery_unlocked_at || new Date().toISOString() : null,
+        delivery_unlocked_at: fullyPaid || editOrder.is_confirmed_by_admin ? editOrder.delivery_unlocked_at || new Date().toISOString() : null,
       };
       const { data, error } = await createClient().from("client_orders").update(patch).eq("id", editOrder.id).is("cancelled_at", null).select().single();
       if (error) throw error;
@@ -284,6 +286,36 @@ export function OrdersManager({
     } catch (error) {
       setOrderError(error instanceof Error ? error.message : (isAr ? "تعذر إلغاء الطلب" : "Unable to cancel order"));
     } finally { setLoading(false); }
+  };
+
+  /** Admin opens (or re-locks) downloads by hand — e.g. a first milestone on a partly paid order. */
+  const setDeliveryOpen = async (order: Order, open: boolean) => {
+    if (order.cancelled_at) return;
+    setLoading(true);
+    const patch = open
+      ? { is_confirmed_by_admin: true, delivery_unlocked_at: new Date().toISOString(), delivery_expired: false }
+      : { is_confirmed_by_admin: false, delivery_unlocked_at: null };
+    const { error } = await createClient().from("client_orders").update(patch).eq("id", order.id);
+    setLoading(false);
+    if (error) { alert(error.message); return; }
+    patchOrder(order.id, patch);
+    router.refresh();
+  };
+
+  const [extendOrder, setExtendOrder] = useState<Order | null>(null);
+  const [extendDays, setExtendDays] = useState("3");
+  const saveExtension = async () => {
+    if (!extendOrder) return;
+    const add = Math.round(Number(extendDays));
+    if (!Number.isFinite(add) || add < 1) { alert(isAr ? "أدخل عدد أيام صحيح" : "Enter a valid number of days"); return; }
+    const delivery_days = Math.min(365, (extendOrder.delivery_days || 7) + add);
+    setLoading(true);
+    const { error } = await createClient().from("client_orders").update({ delivery_days }).eq("id", extendOrder.id);
+    setLoading(false);
+    if (error) { alert(error.message); return; }
+    patchOrder(extendOrder.id, { delivery_days });
+    setExtendOrder(null);
+    router.refresh();
   };
 
   /** After a payment change, unlock delivery once the order is fully paid. */
@@ -797,7 +829,7 @@ export function OrdersManager({
                       {order.delivery_expired ? (
                         <span className="inline-flex items-center gap-1.5 text-red-500"><AlertTriangle size={14} /> {isAr ? "انتهت صلاحية الملفات وتم حذفها" : "Delivery expired — files removed"}</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-primary"><Timer size={14} /> {deliveryRemaining(order.delivery_unlocked_at, isAr)}</span>
+                        <span className="inline-flex items-center gap-1.5 text-primary"><Timer size={14} /> {deliveryRemaining(order.delivery_unlocked_at, order.delivery_days, isAr)}</span>
                       )}
                     </div>
                   )}
@@ -842,9 +874,30 @@ export function OrdersManager({
                       <span className="text-muted-foreground italic">{isAr ? "لم يتم إرفاق ملفات تسليم بعد" : "No deliverables attached yet"}</span>
                     )}
                     {!order.cancelled_at && !order.is_confirmed_by_admin && (
-                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock size={12} /> {isAr ? "التسليم يُفتح عند اكتمال الدفع" : "Delivery unlocks when fully paid"}</span>
+                      <span className="inline-flex items-center gap-1 text-muted-foreground"><Clock size={12} /> {isAr ? "التسليم يُفتح عند اكتمال الدفع أو بفتحه يدوياً" : "Delivery unlocks when fully paid, or by hand"}</span>
                     )}
                   </div>
+
+                  {!order.cancelled_at && (
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {!order.is_confirmed_by_admin ? (
+                        <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer border-green-500/40 text-green-500" disabled={loading} onClick={() => setDeliveryOpen(order, true)}>
+                          <Unlock size={14} /> {isAr ? "فتح التحميل للعميل الآن" : "Open downloads now"}
+                        </Button>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer" disabled={loading || order.delivery_expired} onClick={() => { setExtendDays("3"); setExtendOrder(order); }}>
+                            <Timer size={14} /> {isAr ? `تمديد المهلة (حالياً ${order.delivery_days || 7} يوم)` : `Extend window (now ${order.delivery_days || 7} days)`}
+                          </Button>
+                          {!fullyPaid && (
+                            <Button size="sm" variant="outline" className="gap-1.5 cursor-pointer text-amber-500" disabled={loading} onClick={() => setDeliveryOpen(order, false)}>
+                              <Lock size={14} /> {isAr ? "إعادة قفل التحميل" : "Lock downloads again"}
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" disabled={!!order.cancelled_at || loading}
                     onClick={() => {
@@ -919,6 +972,20 @@ export function OrdersManager({
             <Button onClick={savePayment} disabled={loading} className="cursor-pointer">
               {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Check size={16} className="mr-2" />}
               {isAr ? "تأكيد الدفعة" : "Confirm payment"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!extendOrder} onOpenChange={(o) => { if (!o && !loading) setExtendOrder(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{isAr ? "تمديد مهلة التحميل" : "Extend download window"} — {extendOrder?.project_title}</DialogTitle></DialogHeader>
+          <div className="grid gap-3 py-2">
+            <p className="text-sm text-muted-foreground">{isAr ? `المهلة الحالية ${extendOrder?.delivery_days || 7} يوم من تاريخ الفتح. الأيام المضافة تُحسب فوقها.` : `The window is ${extendOrder?.delivery_days || 7} days from opening. Added days go on top.`}</p>
+            <Label>{isAr ? "عدد الأيام الإضافية" : "Extra days"}</Label>
+            <Input type="number" min={1} max={358} value={extendDays} onChange={(e) => setExtendDays(e.target.value)} autoFocus />
+            <Button onClick={saveExtension} disabled={loading} className="cursor-pointer">
+              {loading && <Loader2 size={16} className="animate-spin me-2" />}{isAr ? "تمديد" : "Extend"}
             </Button>
           </div>
         </DialogContent>

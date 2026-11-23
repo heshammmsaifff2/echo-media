@@ -198,7 +198,7 @@ export default function EchoField({ className }: { className?: string }) {
     <div ref={hostRef} className={className} aria-hidden="true">
       <Canvas
         camera={{ position: [0, 4.2, 11], fov: 42 }}
-        dpr={[1, 1.75]}
+        dpr={[1, 1.25]}
         frameloop={!visible ? "never" : reduced ? "demand" : "always"}
         gl={{ antialias: false, alpha: true, powerPreference: "high-performance" }}
         style={{ pointerEvents: "none" }}

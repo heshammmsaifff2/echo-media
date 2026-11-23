@@ -57,7 +57,7 @@ export function FeaturedWork({
   if (items.length === 0) return null;
 
   return (
-    <section className="relative border-t border-white/10 bg-transparent py-32 sm:py-44">
+    <section className="relative bg-transparent py-20 sm:py-28">
       <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
         <div className="mb-16 flex items-center gap-6">
           <span className="eyebrow whitespace-nowrap">

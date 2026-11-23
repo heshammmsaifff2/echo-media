@@ -114,9 +114,11 @@
 
 
   .hero-stage {
-    background-color: hsl(var(--echo-base));
-    background-image: radial-gradient(ellipse at 85% 85%, hsl(var(--echo-accent) / 0.4), transparent 65%);
-  }
+    /* Solid backdrop that thins out over its last strip, so the hero hands over
+       to the page background without a visible step. Content is not faded. */
+    background-image:
+      radial-gradient(ellipse at 85% 85%, hsl(var(--echo-accent) / 0.4), transparent 65%),
+      linear-gradient(to bottom, hsl(var(--echo-base)) 50%, hsl(var(--echo-base) / 0.6) 75%, hsl(var(--echo-base) / 0));  }
 
   .hero-wavefield {
     opacity: 0.8;

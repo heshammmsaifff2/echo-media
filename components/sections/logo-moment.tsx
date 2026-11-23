@@ -19,10 +19,10 @@ export function LogoMoment() {
   });
 
   return (
-    <section className="relative overflow-hidden border-y border-white/10 bg-transparent py-32 sm:py-44">
+    <section className="relative overflow-hidden bg-transparent py-20 sm:py-28">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[820px] max-w-[110vw] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[hsl(var(--echo-accent))] opacity-[0.16] blur-[150px]"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[820px] max-w-[110vw] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.16]" style={{ background: "radial-gradient(closest-side, hsl(var(--echo-accent)), transparent)" }}
       />
 
       <div className="relative mx-auto max-w-[1400px] px-6 sm:px-10">
