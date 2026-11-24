@@ -12,6 +12,7 @@
 
 import {
   hero,
+  servicesDna,
   style,
   clients,
   goal,
@@ -128,6 +129,32 @@ export const SECTIONS: SectionDef[] = [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: style.heading },
       { id: "body", label: L("Body", "النص"), type: "biLong", def: style.body },
       { id: "steps", label: L("The six (one per row)", "الستة (واحد لكل صف)"), type: "biList", def: style.steps },
+    ],
+  },
+  {
+    slug: "home.services",
+    page: "home",
+    label: L("Services", "الخدمات"),
+    media: false,
+    defaultBg: { type: "none", url: null, poster: null },
+    fields: [
+      { id: "label", label: L("Label", "التصنيف"), type: "bi", def: servicesDna.label },
+      { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: servicesDna.heading },
+      { id: "body", label: L("Intro", "المقدمة"), type: "biLong", def: servicesDna.body },
+      { id: "cta", label: L("Button text", "نص الزر"), type: "bi", def: servicesDna.cta },
+      {
+        id: "items",
+        label: L("Services", "الخدمات"),
+        type: "biObjList",
+        def: objList(servicesDna.items, ["title", "tagline", "description", "steps", "deliverables"]),
+        itemFields: [
+          { id: "title", label: L("Service name", "اسم الخدمة") },
+          { id: "tagline", label: L("Tagline", "الجملة المختصرة") },
+          { id: "description", label: L("Description", "الوصف"), long: true },
+          { id: "steps", label: L("Steps — one per line: title | detail", "المراحل — سطر لكل مرحلة: العنوان | التفاصيل"), long: true },
+          { id: "deliverables", label: L("Deliverables — one per line", "المخرجات — سطر لكل مُخرج"), long: true },
+        ],
+      },
     ],
   },
   {

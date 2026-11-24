@@ -566,3 +566,105 @@ export const footer = {
     ar: "جميع الحقوق محفوظة.",
   } as Bi,
 } as const;
+
+/* ── Services DNA (home) ───────────────────────────────────────────────── */
+// Steps: one per line as "Step title | short detail". Deliverables: one per line.
+export const servicesDna = {
+  label: { en: "Services DNA", ar: "الحمض النووي والخدمات" } as Bi,
+  heading: { en: "Every Service Is an Interconnected Strand", ar: "كل خدمة هي مسار إبداعي متصل" } as Bi,
+  body: {
+    en: "Not line items on an invoice — living production systems engineered like an interconnected helix for lasting impact.",
+    ar: "ليست خدماتنا مجرد بنود في فاتورة، بل منظومات إنتاج حية مبنية كالهيليكس المتشابك لضمان أعلى أثر سينمائي.",
+  } as Bi,
+  cta: { en: "Start This Project", ar: "ابدأ هذا المشروع معنا" } as Bi,
+  items: [
+    {
+      "title": {
+        "en": "Brand Films",
+        "ar": "أفلام العلامات التجارية"
+      },
+      "tagline": {
+        "en": "Cinematic narrative that immortalizes your brand story",
+        "ar": "سرد سينمائي يخلد قصة هويتك"
+      },
+      "description": {
+        "en": "The complete arc of a story about who you are and where you're heading — researched, written, shot, and graded with cinema-grade excellence.",
+        "ar": "القوس الكامل لقصة عن هويتك ورؤيتك — من البحث الأولى وكتابة السيناريو حتى التصوير السينمائي والمعالجة اللونية بمقاييس عالمية."
+      },
+      "steps": {
+        "en": "Brand Discovery | Deep-dive session extracting core identity & audience\nConcept & Script | Crafting emotional narrative & cinematic storyboard\nCinema Production | Cinema cameras, prime lenses & dramatic lighting\nPost & Color Grading | Frame-accurate editing, color grading & custom score",
+        "ar": "البحث وتحليل الهوية | جلسة معمقة لفهم جوهر العلامة والجمهور المستهدف\nالفكرة والسيناريو الإبداعي | بناء قصة ذات مغزى وحوار يلامس الوجدان\nالإنتاج والتصوير السينمائي | كاميرات سينمائية وعدسات برايم وإضاءة احترافية\nالمونتاج والتلوين والصوت | معالجة لونية دقيقة ومكساج صوتي مخصص"
+      },
+      "deliverables": {
+        "en": "4K Cinema Master\nSocial Media Cutdowns\nOriginal Audio & Sound Design",
+        "ar": "ماستر سينمائي بدقة 4K\nنسخ مخصصة لمنصات التواصل\nموسيقى وتصميم صوتي أصلي"
+      }
+    },
+    {
+      "title": {
+        "en": "Commercial Ads",
+        "ar": "الإعلانات التجارية السينمائية"
+      },
+      "tagline": {
+        "en": "High-impact visual execution engineered for conversion",
+        "ar": "تأثير مرئي مكثف يحقق نتيجة مبيعات"
+      },
+      "description": {
+        "en": "High-energy, conversion-driven commercial spots engineered to stop the scroll and drive immediate action, not just fill ad inventory.",
+        "ar": "عمل تجاري مكثف وعالي الطاقة مبني لبيع نتيجة وجذب انتباه العميل في الثواني الأولى، لا لملء فراغ إعلاني."
+      },
+      "steps": {
+        "en": "Creative Direction | Bold hook formulation that captures attention immediately\nHigh-Speed Shooting | Dynamic camera motion & crisp product lighting\nMotion Graphics & VFX | 3D typography, kinetic titles & visual effects\nDynamic Audio Mix | Punchy sound effects & broadcast mastering",
+        "ar": "الرؤية الإخراجية والستوري بورد | صياغة فكرة جريئة تخطف الأنظار في أول 3 ثوانٍ\nالتصوير الميداني السريع | حركات كاميرا ديناميكية وإضاءة تسويقية براقة\nالموشن جرافيك والمؤثرات | تصاميم بصرية ثلاثية الأبعاد وعناصر تفاعلية\nتصميم الصوت الإيقاعي | إيقاع صوتي محفز يعزز قرار الشراء"
+      },
+      "deliverables": {
+        "en": "Vertical (9:16) & Wide (16:9)\nA/B Hook Variations\nAd-Ready Campaign Assets",
+        "ar": "إعلانات عمودية (9:16) وأفقية (16:9)\nاختبارات A/B للمقدمات\nملفات جاهزة للحملات الممولة"
+      }
+    },
+    {
+      "title": {
+        "en": "Podcast Production",
+        "ar": "إنتاج البودكاست الاستوديو"
+      },
+      "tagline": {
+        "en": "Full show pipeline in our acoustically treated studio",
+        "ar": "منظومة إنتاج كاملة في استوديو معالج"
+      },
+      "description": {
+        "en": "State-of-the-art Art House Studio production — taking your show from high-fidelity set recording to viral short clips across all channels.",
+        "ar": "استوديو آرت هاوس المجهز صوتياً وبصرياً — نصنع لك برنامج بودكاست بمعايير البث التلفزيوني من البلاتوه إلى المقاطع الفيروسية."
+      },
+      "steps": {
+        "en": "Acoustic Studio Setup | Acoustic isolation, customizable sets & ambient lighting\n3-Camera Multi-Angle | Multi-angle coverage switching seamlessly in 4K\nBroadcast Microphones | Shure SM7B mics with real-time compression & DSP\nShorts & Viral Clips | Subtitled highlight reels ready for TikTok & Reels",
+        "ar": "الاستوديو والديكور المخصص | عزل صوتي كامل وإضاءة سينمائية مريحة للضيوف\nتصوير متعدد الكاميرات 4K | 3 كاميرات سينمائية لتغطية المحاور والضيوف\nهندسة الصوت المباشر | ميكروفونات شات عالمية ونقاء صوت استثنائي\nالمونتاج والشورتس الفيروسي | تقطيع أقوى اللحظات مع كتابة نصوص احترافية"
+      },
+      "deliverables": {
+        "en": "Full 4K Episodes\nWeekly Viral Shorts\nHigh-CTR Custom Thumbnails",
+        "ar": "حلقات كاملة بدقة 4K\nمقاطع ريلز وشورتس أسبوعية\nصور مصغرة (Thumbnails) جذابة"
+      }
+    },
+    {
+      "title": {
+        "en": "Creative Strategy",
+        "ar": "الاستراتيجية الإبداعية والتموضع"
+      },
+      "tagline": {
+        "en": "We think before we shoot",
+        "ar": "نحن نفكر قبل أن نصوّر"
+      },
+      "description": {
+        "en": "Before a camera comes out, there's a discovery session, audience analysis, and message extraction. You invest in creative clarity.",
+        "ar": "لا نطلق الكاميرا إلا بعد فهم عميق للعلامة وتحليل الجمهور واستخراج الرسالة الجوهرية. تدفع مقابل الفكر والابتكار لا مجرد ساعات التصوير."
+      },
+      "steps": {
+        "en": "Discovery Workshop | Unearthing brand advantages and authentic positioning\nAudience Psychology | Mapping customer desires, pain points and triggers\nCore Message Crafting | Distilling one unforgettable, definitive proposition\nCampaign Roadmap | Actionable production blueprint and aesthetic bible",
+        "ar": "جلسة اكتشاف العلامة | تحديد نقاط القوة والرسائل التنافسية للبراند\nتحليل سيكولوجيا الجمهور | فهم دوافع العميل واحتياجاته العاطفية والعملية\nصياغة الرسالة الجوهرية | بلورة رسالة واضحة لا تقبل النسيان في كلمة وفكرة\nالتوجيه البصري والحملات | خارطة طريق كاملة لإنتاج المحتوى المؤثر"
+      },
+      "deliverables": {
+        "en": "Strategic Positioning Guide\nCampaign Narrative Concepts\nFull Production Roadmap",
+        "ar": "دليل التموضع الاستراتيجي\nملف الأفكار والسيناريوهات\nخطة إنتاج متكاملة"
+      }
+    }
+  ] as { title: Bi; tagline: Bi; description: Bi; steps: Bi; deliverables: Bi }[],
+};
