@@ -16,7 +16,9 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title || "Echo", {
       body: data.body || "",
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      // Android draws the status-bar badge from the alpha channel only: it must be
+      // a white shape on transparency, or it shows as a plain white square.
+      badge: "/icons/badge-96.png",
       dir: data.dir || "auto",
       lang: data.lang || "ar",
       tag: data.tag,

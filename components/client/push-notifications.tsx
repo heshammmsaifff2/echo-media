@@ -111,6 +111,7 @@ export function PushNotifications({ isAr, userId }: { isAr: boolean; userId: str
     await reg.showNotification(t("Notifications are working", "الإشعارات تعمل"), {
       body: t("You'll be notified here when new files are added to your projects.", "ستصلك إشعارات هنا عند رفع ملفات جديدة لمشاريعك."),
       icon: "/icons/icon-192.png",
+      badge: "/icons/badge-96.png",
       dir: isAr ? "rtl" : "ltr",
     });
   };
