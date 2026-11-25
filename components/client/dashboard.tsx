@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PushNotifications } from "@/components/client/push-notifications";
 import Image from "next/image";
 import {
   Lock, Unlock, Loader2, Check, Download, ExternalLink, FileText, CreditCard,
@@ -89,7 +90,7 @@ function parsePreviews(raw: unknown): { files: string[]; unlocked: boolean } {
   return { files: [], unlocked: true };
 }
 
-type Profile = { full_name: string; email: string };
+type Profile = { id: string; full_name: string; email: string };
 
 export function ClientDashboard({ orders, profile }: { orders: Order[]; profile: Profile }) {
   const { isAr } = useI18n();
@@ -104,6 +105,8 @@ export function ClientDashboard({ orders, profile }: { orders: Order[]; profile:
         <h1 className="text-2xl font-bold">{isAr ? `مرحباً، ${profile.full_name || ""}` : `Welcome, ${profile.full_name || ""}`}</h1>
         <p className="text-muted-foreground mt-1">{isAr ? "لوحة التحكم — مشاريعك ومدفوعاتك" : "Your projects and payments dashboard"}</p>
       </div>
+
+      {orders.length > 0 && <PushNotifications isAr={isAr} userId={profile.id} />}
 
       {orders.length === 0 ? (
         <Card><CardContent className="py-12 text-center text-muted-foreground">{isAr ? "لا توجد مشاريع حالياً" : "No projects assigned yet"}</CardContent></Card>

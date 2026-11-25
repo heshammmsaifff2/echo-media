@@ -218,6 +218,15 @@ export function OrdersManager({
   const patchOrder = (id: string, patch: Partial<Order>) =>
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
 
+  /** Fire-and-forget push to the order's client; a failure must never block the admin. */
+  const notifyClient = (orderId: string, kind: "files" | "preview" | "unlocked") => {
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, kind }),
+    }).catch(() => {});
+  };
+
   const toggleOrderPreview = async (order: Order) => {
     const parsed = parsePreviews(order.preview_files);
     const nextUnlocked = !parsed.unlocked;
@@ -225,6 +234,7 @@ export function OrdersManager({
     const supabase = createClient();
     await supabase.from("client_orders").update({ preview_files: payload }).eq("id", order.id);
     patchOrder(order.id, { preview_files: payload as any });
+    if (nextUnlocked && parsed.files.length) notifyClient(order.id, "preview");
     router.refresh();
   };
 
@@ -299,6 +309,7 @@ export function OrdersManager({
     setLoading(false);
     if (error) { alert(error.message); return; }
     patchOrder(order.id, patch);
+    if (open) notifyClient(order.id, "unlocked");
     router.refresh();
   };
 
@@ -490,6 +501,12 @@ export function OrdersManager({
       delivery_expired: isNewUpload ? false : deliveryDialog.delivery_expired,
       delivery_unlocked_at: isNewUpload ? nowIso : deliveryDialog.delivery_unlocked_at,
     });
+    // Tell the client only about things they can actually see now.
+    const previousPreviews = parsePreviews(deliveryDialog.preview_files).files;
+    const newPreview = deliveryForm.preview_unlocked && deliveryForm.previews.some((f) => !previousPreviews.includes(f));
+    if (isNewUpload) notifyClient(deliveryDialog.id, "files");
+    else if (newPreview) notifyClient(deliveryDialog.id, "preview");
+
     setDeliveryDialog(null);
     setLoading(false);
     router.refresh();
