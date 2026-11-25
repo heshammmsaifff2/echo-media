@@ -12,6 +12,7 @@ import {
 } from "@/components/motion";
 import { MediaPanel } from "@/components/media-panel";
 import { useSection } from "@/components/content-provider";
+import type { GalleryImage } from "@/lib/content";
 import { CtaSection } from "@/components/sections/closing";
 import {
   ChevronLeft,
@@ -46,68 +47,8 @@ function useItems(
   }));
 }
 
-const DEFAULT_GALLERY_IMAGES = [
-  {
-    url: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=1600",
-    title_ar: "البلاتوه الرئيسي ومنظومة الإضاءة العلوية",
-    title_en: "Main Production Bay & Overhead Lighting Grid",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=1600",
-    title_ar: "استوديو البودكاست المعالج صوتياً بالكامل",
-    title_en: "Fully Treated Acoustic Podcast Studio",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=1600",
-    title_ar: "كاميرات السينما وعدسات البرايم فائقة الدقة",
-    title_en: "Cinema Prime Lenses & Full-Frame Rigging",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=1600",
-    title_ar: "جناح المونتاج والتصحيح اللوني DaVinci",
-    title_en: "DaVinci Resolve Color Grading & Editing Suite",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=1600",
-    title_ar: "كابينة التعليق الصوتي والدبلجة الاحترافية",
-    title_en: "Isolated Voiceover & Dubbing Booth",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1600",
-    title_ar: "بلاتوه السيكلو الأبيض لتصوير الإعلانات والمنتجات",
-    title_en: "Seamless Infinity Cyclorama for Commercials",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1516280440614-37939bbacd81?q=80&w=1600",
-    title_ar: "غرفة الكنترول والمراقبة المباشرة",
-    title_en: "Multi-Channel Live Video Switcher & Control Room",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1600",
-    title_ar: "صالة استراحة الضيوف وشاشات المراجعة الفورية",
-    title_en: "Client Lounge & High-Definition Playback Monitor",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?q=80&w=1600",
-    title_ar: "شبكة سوفت بوكس وموزعات الإضاءة الناعمة",
-    title_en: "Diffused Softbox Network & Studio Grip Gear",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1478737270239-2f02b77fc618?q=80&w=1600",
-    title_ar: "طاولة البودكاست وتوزيع الميكروفونات الإذاعية",
-    title_en: "Three-Angle Discussion Set & Broadcast Microphones",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1600",
-    title_ar: "قسم معدات التثبيت وحوامل الكاميرا والجيمبال",
-    title_en: "Gimbal & Motion Stabilization Rigging Section",
-  },
-  {
-    url: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1600",
-    title_ar: "ستائر البلاك أوت المعتمة لعزل الإضاءة تماماً",
-    title_en: "Blackout Studio Drapes & Atmospheric Control",
-  },
-];
+type GalleryItem = { url: string; title_ar: string; title_en: string };
+
 
 export function ArtHouseContent() {
   const { pick, isAr } = useI18n();
@@ -116,6 +57,9 @@ export function ArtHouseContent() {
   const introS = useSection("studio.intro");
   const offerS = useSection("studio.offer");
   const galleryS = useSection("studio.gallery");
+  // Photos come only from the admin; with none uploaded the gallery is not shown.
+  const uploaded = galleryS.field<GalleryImage[]>("images", []).filter((g) => g?.url);
+  const galleryImages: GalleryItem[] = uploaded.map((g) => ({ url: g.url, title_ar: g.ar || "", title_en: g.en || "" }));
   const videoS = useSection("studio.video");
 
   const offerItems = useItems(offerS.field("items", null), isAr, artHouse.offer.items);
@@ -123,7 +67,7 @@ export function ArtHouseContent() {
   // Gallery carousel state
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
-  const [lightboxImage, setLightboxImage] = useState<(typeof DEFAULT_GALLERY_IMAGES)[0] | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<GalleryItem | null>(null);
 
   // Controllable video state
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -179,7 +123,7 @@ export function ArtHouseContent() {
     const el = scrollContainerRef.current;
     const itemWidth = 380;
     const current = Math.round(Math.abs(el.scrollLeft) / itemWidth);
-    setActiveImageIndex(Math.min(DEFAULT_GALLERY_IMAGES.length - 1, Math.max(0, current)));
+    setActiveImageIndex(Math.min(galleryImages.length - 1, Math.max(0, current)));
   };
 
   const toggleVideoPlay = () => {
@@ -403,6 +347,7 @@ export function ArtHouseContent() {
       </section>
 
       {/* ── Studio Image Carousel Gallery (Replacing equipment section) ── */}
+      {galleryImages.length > 0 && (
       <section className="relative overflow-hidden bg-transparent py-20 sm:py-24">
         <div className="mx-auto max-w-[1400px] px-6 sm:px-10">
           
@@ -453,7 +398,7 @@ export function ArtHouseContent() {
               msOverflowStyle: "none",
             }}
           >
-            {DEFAULT_GALLERY_IMAGES.map((img, idx) => (
+            {galleryImages.map((img, idx) => (
               <div
                 key={idx}
                 onClick={() => setLightboxImage(img)}
@@ -477,7 +422,7 @@ export function ArtHouseContent() {
 
                 <div className="absolute inset-x-0 bottom-0 p-5 z-10">
                   <span className="font-mono text-[10px] text-sky-400 uppercase tracking-widest">
-                    PHOTO {String(idx + 1).padStart(2, "0")} / {DEFAULT_GALLERY_IMAGES.length}
+                    PHOTO {String(idx + 1).padStart(2, "0")} / {galleryImages.length}
                   </span>
                   <h3 className="text-base font-semibold text-white mt-1 line-clamp-2">
                     {isAr ? img.title_ar : img.title_en}
@@ -490,7 +435,7 @@ export function ArtHouseContent() {
           {/* Image count tracker */}
           <div className="flex items-center justify-between text-xs text-muted-foreground pt-4 border-t border-white/10">
             <span className="font-mono">
-              {String(activeImageIndex + 1).padStart(2, "0")} / {DEFAULT_GALLERY_IMAGES.length} {isAr ? "صورة استوديو" : "studio photos"}
+              {String(activeImageIndex + 1).padStart(2, "0")} / {galleryImages.length} {isAr ? "صورة استوديو" : "studio photos"}
             </span>
             <span className="text-[11px] text-sky-400">
               {isAr ? "اضغط على أي صورة لتكبيرها" : "Click any photo to enlarge"}
@@ -499,6 +444,7 @@ export function ArtHouseContent() {
 
         </div>
       </section>
+      )}
 
       {/* ── Lightbox Modal for Gallery Images ─────────────────────────── */}
       {lightboxImage && (

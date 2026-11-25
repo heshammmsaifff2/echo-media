@@ -46,7 +46,10 @@ export type SectionRow = {
 /** A single editable field inside a section's content blob.
  * `media` is a single uploadable image/video URL (not a background — a piece of
  * media shown inside the section, e.g. one of the two lighting videos). */
-export type FieldType = "bi" | "biLong" | "biList" | "biObjList" | "media";
+/** `imageList`: uploaded photos, each with an optional bilingual caption. */
+export type FieldType = "bi" | "biLong" | "biList" | "biObjList" | "media" | "imageList";
+
+export type GalleryImage = { url: string; en: string; ar: string };
 
 export type ObjField = { id: string; label: Bi; long?: boolean };
 
@@ -267,6 +270,8 @@ export const SECTIONS: SectionDef[] = [
     fields: [
       { id: "heading", label: L("Heading", "العنوان"), type: "bi", def: { en: "Art House Spaces", ar: "مساحات استوديو آرت هاوس" } },
       { id: "subtitle", label: L("Subtitle", "العنوان الفرعي"), type: "biLong", def: { en: "A visual tour inside our sound-treated studios, production sets, and cinema camera bays.", ar: "جولة بصرية حية داخل بلاتوهات التصوير، غرف الصوت المعالجة، وأجنحة الكاميرات السينمائية." } },
+      // Empty by default: the page shows placeholder photos until the admin uploads real ones.
+      { id: "images", label: L("Gallery photos", "صور المعرض"), type: "imageList", def: [] },
     ],
   },
   {

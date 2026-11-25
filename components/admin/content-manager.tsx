@@ -6,19 +6,20 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { uploadToCloudinary } from "@/lib/upload";
 import { useI18n } from "@/lib/i18n";
-import { SECTIONS, type SectionDef, type SectionRow, type FieldDef } from "@/lib/content";
+import { SECTIONS, type SectionDef, type SectionRow, type FieldDef, type GalleryImage } from "@/lib/content";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Pencil, Plus, Trash2, Loader2, ImageIcon, Film, Type } from "lucide-react";
+import { Pencil, Plus, Trash2, Loader2, ImageIcon, Film, Type, ArrowUp, ArrowDown } from "lucide-react";
 
 type BiVal = { en: string; ar: string };
 type ListVal = { en: string[]; ar: string[] };
 type ObjListVal = { en: Record<string, string>[]; ar: Record<string, string>[] };
 type MediaVal = string; // a single uploaded image/video URL
-type FieldVal = BiVal | ListVal | ObjListVal | MediaVal;
+type ImageListVal = GalleryImage[];
+type FieldVal = BiVal | ListVal | ObjListVal | MediaVal | ImageListVal;
 
 type Bg = {
   type: "image" | "video" | "none";
@@ -35,6 +36,9 @@ const PAGE_LABEL: Record<string, { en: string; ar: string }> = {
 };
 
 function cloneDefault(f: FieldDef): FieldVal {
+  if (f.type === "imageList") {
+    return (Array.isArray(f.def) ? (f.def as GalleryImage[]).map((g) => ({ ...g })) : []) as ImageListVal;
+  }
   if (f.type === "media") {
     return (typeof f.def === "string" ? f.def : "") as MediaVal;
   }
@@ -150,6 +154,8 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
             en: (ov.en ?? []).filter(keep),
             ar: (ov.ar ?? []).filter(keep),
           };
+        } else if (f.type === "imageList") {
+          content[f.id] = ((v as ImageListVal) ?? []).filter((g) => (g.url ?? "").trim());
         } else {
           content[f.id] = v;
         }
@@ -223,12 +229,23 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
                   poster = row ? (row.bg_poster_url ?? "") : (def.defaultBg.poster ?? "");
                 }
                 const preview = type === "none" ? null : (type === "video" ? poster || null : url || null);
+                // Photos/videos that live inside the section (not its background).
+                const galleryField = def.fields.find((f) => f.type === "imageList");
+                const photos = galleryField ? ((row?.content?.[galleryField.id] as GalleryImage[] | undefined) ?? []).filter((g) => g?.url) : [];
+                const hasInnerMedia = def.fields.some((f) => f.type === "media");
                 return (
                   <Card key={def.slug}>
                     <CardContent className="flex items-center gap-4 py-3">
                       <div className="w-20 h-14 rounded-lg overflow-hidden bg-muted flex-shrink-0 relative grid place-items-center">
-                        {!def.media ? (
-                          <Type size={18} className="text-muted-foreground" />
+                        {galleryField ? (
+                          photos[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={photos[0].url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <ImageIcon size={18} className="text-muted-foreground" />
+                          )
+                        ) : !def.media ? (
+                          hasInnerMedia ? <Film size={18} className="text-muted-foreground" /> : <Type size={18} className="text-muted-foreground" />
                         ) : preview ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={preview} alt="" className="w-full h-full object-cover" />
@@ -243,8 +260,14 @@ export function ContentManager({ initialRows, editingSlug }: { initialRows: Reco
                           {isAr ? def.label.ar : def.label.en}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {!def.media
-                            ? t("Text only — no media", "نص فقط — بدون وسائط")
+                          {galleryField
+                            ? photos.length
+                              ? t(`Photo gallery · ${photos.length} photos`, `معرض صور · ${photos.length} صورة`)
+                              : t("Photo gallery · no photos yet — open Edit to upload", "معرض صور · لا توجد صور بعد — اضغط تعديل لرفع الصور")
+                            : !def.media
+                            ? hasInnerMedia
+                              ? t("Text and media inside the section", "نصوص ووسائط داخل القسم")
+                              : t("Text only — no media", "نص فقط — بدون وسائط")
                             : type === "none" || !url
                             ? t("None — no background media", "بدون — لا توجد وسائط")
                             : `${type} · ${url}`}
@@ -647,6 +670,10 @@ function FieldEditor({
 }) {
   const label = t(field.label.en, field.label.ar);
 
+  if (field.type === "imageList") {
+    return <ImageListEditor label={label} value={(value as ImageListVal) ?? []} onChange={(g) => onChange(g)} t={t} />;
+  }
+
   if (field.type === "media") {
     return <MediaFieldEditor label={label} value={(value as string) || ""} onChange={(s) => onChange(s)} t={t} />;
   }
@@ -701,6 +728,17 @@ function FieldEditor({
     onChange({ ...v, [lang]: arr });
   };
   const addRow = () => onChange({ en: [...(v.en ?? []), {}], ar: [...(v.ar ?? []), {}] });
+  const moveRow = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= rowCount) return;
+    const swap = (arr: Record<string, string>[] = []) => {
+      const a = [...arr];
+      while (a.length < rowCount) a.push({});
+      [a[i], a[j]] = [a[j], a[i]];
+      return a;
+    };
+    onChange({ en: swap(v.en), ar: swap(v.ar) });
+  };
   const removeRow = (i: number) => {
     const confirmed = window.confirm(
       t("Are you sure you want to delete this row?", "هل أنت متأكد من حذف هذا العنصر؟")
@@ -719,9 +757,17 @@ function FieldEditor({
         <div key={i} className="grid gap-2 rounded-lg border border-border/50 p-3">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">#{i + 1}</span>
-            <Button variant="ghost" size="icon" onClick={() => removeRow(i)} className="h-7 w-7 text-destructive cursor-pointer">
-              <Trash2 size={14} />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" disabled={i === 0} onClick={() => moveRow(i, -1)} className="h-7 w-7 cursor-pointer" title={t("Move up", "تحريك لأعلى")}>
+                <ArrowUp size={14} />
+              </Button>
+              <Button variant="ghost" size="icon" disabled={i === rowCount - 1} onClick={() => moveRow(i, 1)} className="h-7 w-7 cursor-pointer" title={t("Move down", "تحريك لأسفل")}>
+                <ArrowDown size={14} />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => removeRow(i)} className="h-7 w-7 text-destructive cursor-pointer">
+                <Trash2 size={14} />
+              </Button>
+            </div>
           </div>
           {subs.map((sf) => (
             <div key={sf.id} className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -745,6 +791,110 @@ function FieldEditor({
       <Button variant="outline" size="sm" onClick={addRow} className="w-fit gap-2 cursor-pointer">
         <Plus size={14} /> {t("Add row", "إضافة صف")}
       </Button>
+    </div>
+  );
+}
+
+/** Photo gallery: upload many at once, caption, reorder, remove. */
+function ImageListEditor({
+  label,
+  value,
+  onChange,
+  t,
+}: {
+  label: string;
+  value: ImageListVal;
+  onChange: (v: ImageListVal) => void;
+  t: (en: string, ar: string) => string;
+}) {
+  const [uploading, setUploading] = useState(0);
+
+  const uploadMany = async (files: FileList) => {
+    const list = Array.from(files);
+    setUploading(list.length);
+    const added: GalleryImage[] = [];
+    try {
+      for (const file of list) {
+        const { url } = await uploadToCloudinary(file, "echo/site/gallery");
+        added.push({ url, en: "", ar: "" });
+        setUploading((n) => n - 1);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t("Upload failed", "فشل الرفع"));
+    } finally {
+      if (added.length) onChange([...value, ...added]);
+      setUploading(0);
+    }
+  };
+
+  const set = (i: number, patch: Partial<GalleryImage>) =>
+    onChange(value.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= value.length) return;
+    const next = [...value];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+  const remove = (i: number) => {
+    if (!window.confirm(t("Remove this photo from the gallery?", "حذف هذه الصورة من المعرض؟"))) return;
+    onChange(value.filter((_, idx) => idx !== i));
+  };
+
+  return (
+    <div className="grid gap-3 rounded-xl border border-border/50 bg-card/50 p-5 sm:p-6">
+      <div className="flex items-center justify-between">
+        <Label className="text-base font-semibold">{label}</Label>
+        <span className="text-xs text-muted-foreground">{value.length} {t("photos", "صورة")}</span>
+      </div>
+      {value.length === 0 && (
+        <p className="rounded-lg border border-dashed border-border/70 p-4 text-sm text-muted-foreground">
+          {t("No photos yet — the page shows placeholder photos until you add your own.", "لا توجد صور بعد — الصفحة تعرض صوراً مؤقتة إلى أن ترفع صورك.")}
+        </p>
+      )}
+      {value.map((g, i) => (
+        <div key={g.url + i} className="grid gap-3 rounded-lg border border-border/50 p-3 sm:grid-cols-[140px_1fr]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={g.url} alt="" className="aspect-video w-full rounded-md object-cover bg-muted" />
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">#{i + 1}</span>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" disabled={i === 0} onClick={() => move(i, -1)} className="h-7 w-7 cursor-pointer" title={t("Move up", "تحريك لأعلى")}>
+                  <ArrowUp size={14} />
+                </Button>
+                <Button variant="ghost" size="icon" disabled={i === value.length - 1} onClick={() => move(i, 1)} className="h-7 w-7 cursor-pointer" title={t("Move down", "تحريك لأسفل")}>
+                  <ArrowDown size={14} />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => remove(i)} className="h-7 w-7 text-destructive cursor-pointer">
+                  <Trash2 size={14} />
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+              <Input value={g.en} placeholder={t("Caption (EN, optional)", "الوصف بالإنجليزية (اختياري)")} onChange={(e) => set(i, { en: e.target.value })} />
+              <Input value={g.ar} dir="rtl" placeholder={t("Caption (AR, optional)", "الوصف بالعربية (اختياري)")} onChange={(e) => set(i, { ar: e.target.value })} />
+            </div>
+          </div>
+        </div>
+      ))}
+      <Input
+        type="file"
+        multiple
+        accept="image/*"
+        disabled={uploading > 0}
+        onChange={(e) => {
+          if (e.target.files?.length) uploadMany(e.target.files);
+          e.target.value = "";
+        }}
+        className="cursor-pointer"
+      />
+      {uploading > 0 && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 size={13} className="animate-spin" /> {t(`Uploading… ${uploading} left`, `جاري الرفع… متبقي ${uploading}`)}
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground">{t("Remember to save the section after uploading.", "لا تنسَ حفظ القسم بعد الرفع.")}</p>
     </div>
   );
 }
